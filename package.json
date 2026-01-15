@@ -1,0 +1,33 @@
+{
+  "name": "spores-garden",
+  "version": "0.1.0",
+  "description": "A digital garden that goes where you go - powered by AT Protocol",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "start": "vite"
+  },
+  "dependencies": {
+    "@atcute/client": "^4.2.1",
+    "@atcute/identity-resolver": "^1.2.2",
+    "@atcute/oauth-browser-client": "^2.0.3",
+    "dompurify": "^3.3.1",
+    "marked": "^17.0.1"
+  },
+  "devDependencies": {
+    "@types/dompurify": "^3.0.5",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.8"
+  },
+  "keywords": [
+    "atproto",
+    "bluesky",
+    "personal-website",
+    "digital-garden",
+    "static-site"
+  ],
+  "author": "",
+  "license": "MIT"
+}

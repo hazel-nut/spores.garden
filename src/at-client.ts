@@ -1,0 +1,432 @@
+/**
+ * AT Protocol client for PDS (records) and Constellation (backlinks)
+ */
+
+import { Client } from '@atcute/client';
+import { getPdsEndpoint } from '@atcute/identity';
+import {
+  CompositeDidDocumentResolver,
+  PlcDidDocumentResolver,
+  WebDidDocumentResolver
+} from '@atcute/identity-resolver';
+import { ENDPOINTS } from './config/endpoints';
+
+// Cache for resolved PDS endpoints
+const pdsCache = new Map<string, string>();
+
+/**
+ * Resolve PDS endpoint from DID
+ */
+async function resolvePdsEndpoint(did: string): Promise<string | null> {
+  if (pdsCache.has(did)) {
+    return pdsCache.get(did)!;
+  }
+
+  try {
+    const resolver = new CompositeDidDocumentResolver({
+      methods: {
+        plc: new PlcDidDocumentResolver(),
+        web: new WebDidDocumentResolver()
+      }
+    });
+
+    const doc = await resolver.resolve(did);
+    const pds = getPdsEndpoint(doc);
+    
+    if (pds) {
+      pdsCache.set(did, pds);
+      return pds;
+    }
+  } catch (error) {
+    console.warn(`Failed to resolve PDS for ${did}:`, error);
+  }
+
+  return null;
+}
+
+/**
+ * Fetch a single record from PDS or Slingshot
+ * 
+ * @param did - The DID of the repository
+ * @param collection - The collection name
+ * @param rkey - The record key
+ * @param options - Optional configuration
+ * @param options.useSlingshot - If true, use Slingshot directly (useful for backlinks from many DIDs)
+ */
+export async function getRecord(did, collection, rkey, options = {}) {
+  if (!did) {
+    throw new Error('DID is required');
+  }
+  if (!collection) {
+    throw new Error('Collection is required');
+  }
+  if (!rkey) {
+    throw new Error('Rkey is required');
+  }
+
+  const { useSlingshot = false } = options;
+
+  // If explicitly requested, use Slingshot (useful for backlinks from many DIDs)
+  if (useSlingshot) {
+    const url = new URL('/xrpc/com.atproto.repo.getRecord', ENDPOINTS.SLINGSHOT_URL);
+    url.searchParams.set('repo', did);
+    url.searchParams.set('collection', collection);
+    url.searchParams.set('rkey', rkey);
+
+    const response = await fetch(url);
+    if (!response.ok) {
+      if (response.status === 404) return null;
+      throw new Error(`Failed to fetch record: ${response.status}`);
+    }
+
+    return response.json();
+  }
+
+  // Resolve PDS endpoint from DID
+  const pdsUrl = await resolvePdsEndpoint(did);
+  if (!pdsUrl) {
+    // Fallback to Slingshot if PDS resolution fails
+    console.warn(`Could not resolve PDS for ${did}, falling back to Slingshot`);
+    const url = new URL('/xrpc/com.atproto.repo.getRecord', ENDPOINTS.SLINGSHOT_URL);
+    url.searchParams.set('repo', did);
+    url.searchParams.set('collection', collection);
+    url.searchParams.set('rkey', rkey);
+
+    const response = await fetch(url);
+    if (!response.ok) {
+      if (response.status === 404) return null;
+      throw new Error(`Failed to fetch record: ${response.status}`);
+    }
+
+    return response.json();
+  }
+
+  // Use resolved PDS
+  const url = new URL('/xrpc/com.atproto.repo.getRecord', pdsUrl);
+  url.searchParams.set('repo', did);
+  url.searchParams.set('collection', collection);
+  url.searchParams.set('rkey', rkey);
+
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      if (response.status === 404) return null;
+      throw new Error(`Failed to fetch record: ${response.status}`);
+    }
+
+    return response.json();
+  } catch (error) {
+    // If PDS fails, try Slingshot as fallback
+    console.warn(`PDS request failed for ${pdsUrl}, trying Slingshot:`, error);
+    const fallbackUrl = new URL('/xrpc/com.atproto.repo.getRecord', ENDPOINTS.SLINGSHOT_URL);
+    fallbackUrl.searchParams.set('repo', did);
+    fallbackUrl.searchParams.set('collection', collection);
+    fallbackUrl.searchParams.set('rkey', rkey);
+
+    const response = await fetch(fallbackUrl);
+    if (!response.ok) {
+      if (response.status === 404) return null;
+      throw new Error(`Failed to fetch record: ${response.status}`);
+    }
+
+    return response.json();
+  }
+}
+
+/**
+ * List records in a collection
+ */
+export async function listRecords(did, collection, options = {}, agent = null) {
+  if (!did) {
+    throw new Error('DID is required');
+  }
+  if (!collection) {
+    throw new Error('Collection is required');
+  }
+
+  const { limit = 50, cursor } = options;
+
+  // Try authenticated agent first (if provided)
+  if (agent) {
+    try {
+      // Validate agent
+      if (!agent || typeof agent !== 'object') {
+        throw new Error('Invalid agent: agent is not a valid object');
+      }
+      
+      // Resolve PDS endpoint to ensure client uses correct service
+      const pdsUrl = await resolvePdsEndpoint(did);
+
+      // Create client with explicit service URL if we have it
+      const clientOptions: any = { handler: agent };
+      if (pdsUrl) {
+        clientOptions.serviceUrl = pdsUrl;
+      }
+      
+      const client = new Client(clientOptions);
+      
+      // Use get() for queries (listRecords is a query)
+      const response = await client.get('com.atproto.repo.listRecords', {
+        params: {
+          repo: did,
+          collection,
+          limit,
+          ...(cursor && { cursor })
+        }
+      });
+
+      if (!response.ok) {
+        const errorMsg = response.data?.message || response.data?.error || 'Unknown error';
+        throw new Error(`Failed to list records: ${errorMsg}`);
+      }
+
+      return response.data;
+    } catch (error) {
+      // If authenticated call fails, fall back to Slingshot
+      // (but only if it's not a 404 - 404 means repo doesn't exist)
+      if (error?.statusCode === 404 || error?.status === 404) {
+        throw error; // Don't fall back for 404s
+      }
+      console.warn('Failed to list records via authenticated agent, falling back to Slingshot:', error);
+      // Fall through to Slingshot
+    }
+  }
+
+  // Fall back to PDS (resolved from DID) or Slingshot
+  const pdsUrl = await resolvePdsEndpoint(did);
+  const serviceUrl = pdsUrl || ENDPOINTS.SLINGSHOT_URL;
+  
+  if (!pdsUrl) {
+    console.warn(`Could not resolve PDS for ${did}, falling back to Slingshot`);
+  }
+
+  const url = new URL('/xrpc/com.atproto.repo.listRecords', serviceUrl);
+  url.searchParams.set('repo', did);
+  url.searchParams.set('collection', collection);
+  url.searchParams.set('limit', limit.toString());
+  if (cursor) url.searchParams.set('cursor', cursor);
+
+  try {
+    const response = await fetch(url);
+    
+    if (!response.ok) {
+      // If PDS fails and we haven't tried Slingshot yet, try it
+      if (pdsUrl && serviceUrl === pdsUrl) {
+        console.warn(`PDS request failed for ${pdsUrl}, trying Slingshot`);
+        const fallbackUrl = new URL('/xrpc/com.atproto.repo.listRecords', ENDPOINTS.SLINGSHOT_URL);
+        fallbackUrl.searchParams.set('repo', did);
+        fallbackUrl.searchParams.set('collection', collection);
+        fallbackUrl.searchParams.set('limit', limit.toString());
+        if (cursor) fallbackUrl.searchParams.set('cursor', cursor);
+        
+        const fallbackResponse = await fetch(fallbackUrl);
+        if (!fallbackResponse.ok) {
+          const errorText = await fallbackResponse.text().catch(() => 'Unknown error');
+          throw new Error(`Failed to list records: ${fallbackResponse.status} ${fallbackResponse.statusText}. ${errorText}`);
+        }
+        
+        const data = await fallbackResponse.json();
+        if (!data || !data.records) {
+          throw new Error('Invalid response format: missing records array');
+        }
+        return data;
+      }
+      
+      const errorText = await response.text().catch(() => 'Unknown error');
+      throw new Error(`Failed to list records: ${response.status} ${response.statusText}. ${errorText}`);
+    }
+
+    const data = await response.json();
+    
+    if (!data || !data.records) {
+      throw new Error('Invalid response format: missing records array');
+    }
+
+    return data;
+  } catch (error) {
+    if (error instanceof TypeError && error.message.includes('fetch')) {
+      throw new Error(`Network error: Unable to connect to ${serviceUrl}. Check your internet connection.`);
+    }
+    throw error;
+  }
+}
+
+/**
+ * Describe a repo to get all collections
+ */
+export async function describeRepo(did, agent = null) {
+  if (!did) {
+    throw new Error('DID is required');
+  }
+
+  // Try authenticated agent first (if provided)
+  if (agent) {
+    try {
+      // Validate agent
+      if (!agent || typeof agent !== 'object') {
+        throw new Error('Invalid agent: agent is not a valid object');
+      }
+
+      // Resolve PDS endpoint
+      const pdsUrl = await resolvePdsEndpoint(did);
+      
+      // Create client with explicit service URL if we have it
+      const clientOptions: any = { handler: agent };
+      if (pdsUrl) {
+        clientOptions.serviceUrl = pdsUrl;
+      }
+      
+      const client = new Client(clientOptions);
+
+      // Use get() for queries
+      const response = await client.get('com.atproto.repo.describeRepo', {
+        params: { repo: did }
+      });
+
+      if (!response.ok) {
+        const errorMsg = response.data?.message || response.data?.error || 'Unknown error';
+        throw new Error(`Failed to describe repo: ${errorMsg}`);
+      }
+
+      return response.data;
+    } catch (error) {
+      // If authenticated call fails, fall back to Slingshot
+      // (but only if it's not a 404 - 404 means repo doesn't exist)
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const statusCode = error?.statusCode || error?.status;
+      
+      if (statusCode === 404) {
+        console.warn('Authenticated call returned 404, repo may not exist');
+        throw error; // Don't fall back for 404s
+      }
+      
+      console.warn('Failed to describe repo via authenticated agent, falling back to Slingshot:', errorMessage);
+      // Fall through to Slingshot
+    }
+  }
+
+  // Fall back to PDS (resolved from DID) or Slingshot
+  const pdsUrl = await resolvePdsEndpoint(did);
+  const serviceUrl = pdsUrl || ENDPOINTS.SLINGSHOT_URL;
+  
+  if (!pdsUrl) {
+    console.warn(`Could not resolve PDS for ${did}, falling back to Slingshot`);
+  }
+
+  const url = new URL('/xrpc/com.atproto.repo.describeRepo', serviceUrl);
+  url.searchParams.set('repo', did);
+
+  try {
+    const response = await fetch(url);
+    
+    if (!response.ok) {
+      // If PDS fails and we haven't tried Slingshot yet, try it
+      if (pdsUrl && serviceUrl === pdsUrl) {
+        console.warn(`PDS request failed for ${pdsUrl}, trying Slingshot`);
+        const fallbackUrl = new URL('/xrpc/com.atproto.repo.describeRepo', ENDPOINTS.SLINGSHOT_URL);
+        fallbackUrl.searchParams.set('repo', did);
+        
+        const fallbackResponse = await fetch(fallbackUrl);
+        if (!fallbackResponse.ok) {
+          const errorText = await fallbackResponse.text().catch(() => 'Unknown error');
+          throw new Error(`Failed to describe repo: ${fallbackResponse.status} ${fallbackResponse.statusText}. ${errorText}`);
+        }
+        
+        const data = await fallbackResponse.json();
+        if (!data) {
+          throw new Error('Empty response from describeRepo');
+        }
+        return data;
+      }
+      
+      const errorText = await response.text().catch(() => 'Unknown error');
+      throw new Error(`Failed to describe repo: ${response.status} ${response.statusText}. ${errorText}`);
+    }
+
+    const data = await response.json();
+    
+    if (!data) {
+      throw new Error('Empty response from describeRepo');
+    }
+
+    return data;
+  } catch (error) {
+    if (error instanceof TypeError && error.message.includes('fetch')) {
+      throw new Error(`Network error: Unable to connect to ${serviceUrl}. Check your internet connection.`);
+    }
+    throw error;
+  }
+}
+
+/**
+ * Get backlinks from Constellation (for guestbook, etc.)
+ */
+export async function getBacklinks(subject, source, options = {}) {
+  const { limit = 50, cursor } = options;
+
+  const url = new URL('/xrpc/blue.microcosm.links.getBacklinks', ENDPOINTS.CONSTELLATION_URL);
+  url.searchParams.set('subject', subject);
+  url.searchParams.set('source', source);
+  url.searchParams.set('limit', limit.toString());
+  if (cursor) url.searchParams.set('cursor', cursor);
+
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Failed to get backlinks: ${response.status}`);
+  }
+
+  return response.json();
+}
+
+/**
+ * Resolve a handle to DID
+ */
+export async function resolveHandle(handle) {
+  const url = new URL('/xrpc/com.atproto.identity.resolveHandle', 'https://public.api.bsky.app');
+  url.searchParams.set('handle', handle);
+
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Failed to resolve handle: ${response.status}`);
+  }
+
+  const data = await response.json();
+  return data.did;
+}
+
+/**
+ * Get profile from Bluesky API
+ */
+export async function getProfile(did) {
+  const url = new URL('/xrpc/app.bsky.actor.getProfile', 'https://public.api.bsky.app');
+  url.searchParams.set('actor', did);
+
+  const response = await fetch(url);
+  if (!response.ok) {
+    if (response.status === 404) return null;
+    throw new Error(`Failed to get profile: ${response.status}`);
+  }
+
+  return response.json();
+}
+
+/**
+ * Parse an AT URI into components
+ */
+export function parseAtUri(uri) {
+  const match = uri.match(/^at:\/\/([^/]+)\/([^/]+)\/(.+)$/);
+  if (!match) return null;
+
+  return {
+    did: match[1],
+    collection: match[2],
+    rkey: match[3]
+  };
+}
+
+/**
+ * Build an AT URI from components
+ */
+export function buildAtUri(did, collection, rkey) {
+  return `at://${did}/${collection}/${rkey}`;
+}
