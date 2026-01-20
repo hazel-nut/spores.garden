@@ -99,8 +99,8 @@ export function generateThemeFromDid(did) {
   const hash = stringToHash(did);
   const hue = hash % 360;
 
-  // Generate a background color from the hash
-  const backgroundColor = chroma.hsl(hue, 0.6, 0.9);
+  // Generate a more saturated background color from the hash
+  const backgroundColor = chroma.hsl(hue, 0.8, 0.9);
 
   // Ensure sufficient contrast for text color
   const textColor = chroma.contrast(backgroundColor, 'white') > 4.5 ? 'white' : 'black';
@@ -111,8 +111,8 @@ export function generateThemeFromDid(did) {
   const colors = {
     background: backgroundColor.hex(),
     text: textColor,
-    primary: chroma(palette[2]).saturate(1).hex(),
-    accent: chroma(palette[3]).saturate(1).hex(),
+    primary: chroma(palette[2]).saturate(2).hex(),
+    accent: chroma(palette[3]).saturate(2).hex(),
     muted: chroma.mix(backgroundColor, textColor, 0.5).hex(),
     border: chroma.mix(backgroundColor, textColor, 0.2).hex()
   };

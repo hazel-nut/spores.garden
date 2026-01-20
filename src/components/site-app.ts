@@ -350,6 +350,13 @@ class SiteApp extends HTMLElement {
   }
 
   showWelcome() {
+    // Check if any other modal is currently open
+    const activeModals = document.querySelectorAll('.modal');
+    if (activeModals.length > 0) {
+      console.warn('Attempted to show welcome modal while other modals are active. Aborting.');
+      return;
+    }
+
     const welcome = document.createElement('welcome-modal');
     welcome.setOnClose(() => {
       this.render();

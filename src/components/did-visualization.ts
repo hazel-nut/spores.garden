@@ -1,4 +1,5 @@
 import { updateConfig } from "../config";
+import { generateThemeFromDid } from "../themes/engine";
 
 class DidVisualization extends HTMLElement {
   private did: string | null = null;
@@ -24,22 +25,31 @@ class DidVisualization extends HTMLElement {
       return;
     }
 
-    // SVG visualization
+    // Generate theme from DID to get colors
+    const { theme } = generateThemeFromDid(this.did);
+    const { colors } = theme;
+
+    // SVG visualization - 0/1 grid
     const hash = this.stringToHash(this.did);
     const svgSize = 100;
-    const gridSize = 10;
-    const cell_size = svgSize / gridSize;
+    const gridSize = 10; // e.g., 10x10 grid
+    const cellSize = svgSize / gridSize;
 
     let rects = '';
     for (let i = 0; i < gridSize; i++) {
       for (let j = 0; j < gridSize; j++) {
-        const charCode = this.did.charCodeAt((i * gridSize + j) % this.did.length);
-        const color = `hsl(${(hash + charCode * (i * gridSize + j)) % 360}, 70%, 80%)`;
-        rects += `<rect x="${j * cell_size}" y="${i * cell_size}" width="${cell_size}" height="${cell_size}" fill="${color}" />`;
+        // Use a simple binary pattern based on the hash and position
+        const binaryValue = ((hash + i * gridSize + j) % 2);
+        const color = binaryValue === 1 ? colors.primary : colors.background;
+        rects += `<rect x="${j * cellSize}" y="${i * cellSize}" width="${cellSize}" height="${cellSize}" fill="${color}" />`;
       }
     }
 
-    const svgString = `<svg width="100" height="100" viewBox="0 0 ${svgSize} ${svgSize}" xmlns="http://www.w3.org/2000/svg">${rects}</svg>`;
+    const svgString = `
+      <svg width="100" height="100" viewBox="0 0 ${svgSize} ${svgSize}" xmlns="http://www.w3.org/2000/svg">
+        ${rects}
+      </svg>
+    `;
 
     this.innerHTML = `
       <div style="display: flex; justify-content: center;">
