@@ -75,14 +75,6 @@ class CreateContent extends HTMLElement {
           <textarea id="content-content" class="textarea" rows="10" placeholder="Enter your content here..." required>${(this.contentContent || '').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</textarea>
         </div>
         
-        <div class="form-group">
-          <label for="content-upload" class="upload-label">
-            <span>📎 Upload File</span>
-            <input type="file" id="content-upload" class="file-input" accept=".txt,.md,.html">
-            <span class="upload-hint">Or upload a text, markdown, or HTML file</span>
-          </label>
-        </div>
-        
         <div class="modal-actions">
           <button class="button button-primary" id="create-content-btn">${this.editMode ? 'Save Changes' : 'Create Content'}</button>
           <button class="button button-secondary modal-close">Cancel</button>
@@ -97,7 +89,6 @@ class CreateContent extends HTMLElement {
     const formatSelect = this.querySelector('#content-format') as HTMLSelectElement;
     const titleInput = this.querySelector('#content-title') as HTMLInputElement;
     const contentTextarea = this.querySelector('#content-content') as HTMLTextAreaElement;
-    const fileInput = this.querySelector('#content-upload') as HTMLInputElement;
     const createBtn = this.querySelector('#create-content-btn') as HTMLButtonElement;
     const cancelBtn = this.querySelector('.modal-close') as HTMLButtonElement;
     
@@ -114,36 +105,6 @@ class CreateContent extends HTMLElement {
     // Handle content input
     contentTextarea?.addEventListener('input', (e) => {
       this.contentContent = (e.target as HTMLTextAreaElement).value;
-    });
-    
-    // Handle file upload
-    fileInput?.addEventListener('change', async (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
-      if (!file) return;
-      
-      try {
-        const text = await file.text();
-        this.contentContent = text;
-        if (contentTextarea) {
-          contentTextarea.value = text;
-        }
-        
-        // Auto-detect format from file extension
-        const ext = file.name.split('.').pop()?.toLowerCase();
-        if (ext === 'md') {
-          this.selectedFormat = 'markdown';
-          if (formatSelect) formatSelect.value = 'markdown';
-        } else if (ext === 'html' || ext === 'htm') {
-          this.selectedFormat = 'html';
-          if (formatSelect) formatSelect.value = 'html';
-        } else {
-          this.selectedFormat = 'text';
-          if (formatSelect) formatSelect.value = 'text';
-        }
-      } catch (error) {
-        console.error('Failed to read file:', error);
-        alert('Failed to read file. Please try again.');
-      }
     });
     
     // Handle create/save button

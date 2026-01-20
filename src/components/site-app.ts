@@ -3,9 +3,9 @@
  * Loads config, initializes OAuth, renders sections, handles edit mode.
  */
 
-import { initConfig, getConfig, getSiteOwnerDid, isOwner, saveConfig, setSiteOwnerDid, loadUserConfig, hasUserConfig } from '../config';
+import { initConfig, getConfig, getSiteOwnerDid, isOwner, saveConfig, setSiteOwnerDid, loadUserConfig, hasUserConfig, updateTheme } from '../config';
 import { initOAuth, isLoggedIn, getCurrentDid, login, logout } from '../oauth';
-import { applyTheme } from '../themes/engine';
+import { applyTheme, generateThemeFromDid } from '../themes/engine';
 import { escapeHtml } from '../utils/sanitize';
 import type { WelcomeModalElement, WelcomeAction } from '../types';
 import './section-block';
@@ -97,6 +97,11 @@ class SiteApp extends HTMLElement {
         this.render();
       });
 
+      // Listen for open config modal requests
+      window.addEventListener('open-config-modal', () => {
+        this.showConfigModal();
+      });
+
       // If already logged in and no owner set, set current user as owner
       if (isLoggedIn() && !getSiteOwnerDid()) {
         const currentDid = getCurrentDid();
@@ -141,6 +146,13 @@ class SiteApp extends HTMLElement {
     const config = getConfig();
     const ownerDid = getSiteOwnerDid();
     const isOwnerLoggedIn = isOwner();
+
+    // Update title and meta description
+    document.title = config.title || 'spores.garden';
+    const metaDescription = document.querySelector('#meta-description') as HTMLMetaElement;
+    if (metaDescription) {
+      metaDescription.content = config.description || 'A personal ATProto website';
+    }
 
     this.innerHTML = '';
 
@@ -228,13 +240,37 @@ class SiteApp extends HTMLElement {
     if (sections.length === 0 && !this.editMode) {
       const emptyState = document.createElement('div');
       emptyState.className = 'empty-state';
-      
-      const heading = document.createElement('h2');
-      heading.style.textAlign = 'center';
-      heading.textContent = isOwnerLoggedIn ? 'Click Edit to add sections.' : 'Login to create your garden';
-      emptyState.appendChild(heading);
-      
-      if (!isOwnerLoggedIn) {
+
+      if (isOwnerLoggedIn) {
+        const text = document.createElement('h2');
+        text.style.textAlign = 'center';
+        text.style.display = 'flex';
+        text.style.justifyContent = 'center';
+        text.style.alignItems = 'baseline';
+        text.style.flexWrap = 'wrap';
+        
+        const span1 = document.createElement('span');
+        span1.textContent = 'Click ';
+        text.appendChild(span1);
+
+        const editButton = document.createElement('button');
+        editButton.className = 'button button-primary';
+        editButton.textContent = 'Edit';
+        editButton.style.margin = '0 0.5rem';
+        editButton.addEventListener('click', () => this.toggleEditMode());
+        text.appendChild(editButton);
+
+        const span2 = document.createElement('span');
+        span2.textContent = ' to add sections.';
+        text.appendChild(span2);
+
+        emptyState.appendChild(text);
+      } else {
+        const heading = document.createElement('h2');
+        heading.style.textAlign = 'center';
+        heading.textContent = 'Login to create your garden';
+        emptyState.appendChild(heading);
+        
         const loginBtn = document.createElement('button');
         loginBtn.className = 'button';
         loginBtn.style.marginTop = 'var(--spacing-md)';

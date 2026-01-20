@@ -10,8 +10,9 @@
  */
 
 import { getConfig, updateConfig, updateTheme, setCustomCss } from '../config';
-import { getThemePresets, getThemePreset, getPresetColors } from '../themes/engine';
+import { getThemePresets, getThemePreset, getPresetColors, generateThemeFromDid } from '../themes/engine';
 import { applyTheme } from '../themes/engine';
+import { getCurrentDid } from '../oauth';
 
 class SiteConfig extends HTMLElement {
   constructor() {
@@ -73,12 +74,25 @@ class SiteConfig extends HTMLElement {
           </div>
 
           <div class="site-config-section">
+            <label class="label">Description</label>
+            <textarea 
+              class="input textarea" 
+              id="config-description" 
+              placeholder="A short description of your garden"
+              rows="3"
+            >${(config.description || '').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</textarea>
+          </div>
+
+          <div class="site-config-section">
             <label class="label">Theme Preset</label>
-            <select class="input select" id="config-theme-preset">
-              ${presets.map(preset => `
-                <option value="${preset}" ${theme.preset === preset ? 'selected' : ''}>${preset.charAt(0).toUpperCase() + preset.slice(1)}</option>
-              `).join('')}
-            </select>
+            <div class="theme-preset-controls">
+              <select class="input select" id="config-theme-preset">
+                ${presets.map(preset => `
+                  <option value="${preset}" ${theme.preset === preset ? 'selected' : ''}>${preset.charAt(0).toUpperCase() + preset.slice(1)}</option>
+                `).join('')}
+              </select>
+              <button class="button button-secondary" id="generate-did-theme">Generate from DID</button>
+            </div>
           </div>
 
           <div class="site-config-section">
@@ -152,6 +166,26 @@ class SiteConfig extends HTMLElement {
           </div>
 
           <div class="site-config-section">
+            <label class="label">Border</label>
+            <div class="theme-border-controls">
+              <select class="input select" id="config-border-style">
+                <option value="solid" ${theme.borderStyle === 'solid' ? 'selected' : ''}>Solid</option>
+                <option value="dashed" ${theme.borderStyle === 'dashed' ? 'selected' : ''}>Dashed</option>
+                <option value="dotted" ${theme.borderStyle === 'dotted' ? 'selected' : ''}>Dotted</option>
+                <option value="double" ${theme.borderStyle === 'double' ? 'selected' : ''}>Double</option>
+                <option value="groove" ${theme.borderStyle === 'groove' ? 'selected' : ''}>Groove</option>
+              </select>
+              <input 
+                type="text" 
+                class="input" 
+                id="config-border-width" 
+                value="${theme.borderWidth || '2px'}" 
+                placeholder="e.g. 2px"
+              />
+            </div>
+          </div>
+
+          <div class="site-config-section">
             <label class="label">Custom CSS</label>
             <textarea 
               class="input textarea" 
@@ -195,6 +229,13 @@ class SiteConfig extends HTMLElement {
       }
     });
 
+    // Description
+    const descriptionInput = this.querySelector('#config-description');
+    descriptionInput.addEventListener('input', (e) => {
+      const value = e.target.value;
+      updateConfig({ description: value });
+    });
+
     // Theme preset - frontend-only, just updates color pickers
     const presetSelect = this.querySelector('#config-theme-preset');
     presetSelect.addEventListener('change', (e) => {
@@ -221,6 +262,34 @@ class SiteConfig extends HTMLElement {
       
       // Update frontend-only preset
       updateTheme({ preset: newPreset });
+      this.applyThemePreview();
+      this.dispatchUpdate();
+    });
+
+    // Generate from DID button
+    const generateDidThemeBtn = this.querySelector('#generate-did-theme');
+    generateDidThemeBtn.addEventListener('click', () => {
+      const did = getCurrentDid();
+      if (did) {
+        const { theme } = generateThemeFromDid(did);
+        updateTheme(theme);
+        this.render();
+      }
+    });
+
+    // Border controls
+    const borderStyleInput = this.querySelector('#config-border-style') as HTMLSelectElement;
+    borderStyleInput.addEventListener('input', (e) => {
+      const value = (e.target as HTMLSelectElement).value;
+      updateTheme({ borderStyle: value });
+      this.applyThemePreview();
+      this.dispatchUpdate();
+    });
+
+    const borderWidthInput = this.querySelector('#config-border-width') as HTMLInputElement;
+    borderWidthInput.addEventListener('input', (e) => {
+      const value = (e.target as HTMLInputElement).value;
+      updateTheme({ borderWidth: value });
       this.applyThemePreview();
       this.dispatchUpdate();
     });

@@ -10,9 +10,12 @@
 
 import { getCollections, getAllRecords, groupByCollection } from '../records/loader';
 import { getCurrentDid, getAgent } from '../oauth';
-import { addSection, getConfig } from '../config';
+import { addSection, getConfig, updateConfig, updateTheme, saveConfig } from '../config';
 import { getProfile } from '../at-client';
+import { generateThemeFromDid, applyTheme } from '../themes/engine';
 import type { ATRecord } from '../types';
+import './did-visualization';
+import './theme-metadata';
 
 type WelcomeAction =
   | 'load-records'
@@ -24,9 +27,13 @@ class WelcomeModal extends HTMLElement {
   private did: string | null = null;
   private onClose: (() => void) | null = null;
   private collections: string[] = [];
+  private profile: any = null;
 
-  connectedCallback() {
+  async connectedCallback() {
     this.did = getCurrentDid();
+    if (this.did) {
+      this.profile = await getProfile(this.did);
+    }
     this.render();
   }
 
@@ -63,80 +70,76 @@ class WelcomeModal extends HTMLElement {
 
   private async render() {
     this.className = 'welcome-modal';
-    this.innerHTML = '';
+    this.innerHTML = `
+      <div class="welcome-content">
+        <div class="welcome-header">
+          <h1 class="welcome-title">Welcome to spores.garden</h1>
+          <p class="welcome-subtitle">Let's get your garden started.</p>
+        </div>
+        <div id="onboarding-step-1">
+          <p>On Bluesky, you are known as <strong>${this.profile.displayName}</strong> (@${this.profile.handle}). On spores.garden, you can customize your page's headers.</p>
+          
+          <div class="form-group">
+            <label for="site-title">Site Title (H1)</label>
+            <input type="text" id="site-title" class="input" value="${this.profile?.displayName || ''}">
+          </div>
+          <div class="form-group">
+            <label for="site-subtitle">Site Subtitle (H2)</label>
+            <input type="text" id="site-subtitle" class="input" value="${this.profile?.handle ? '@' + this.profile.handle : ''}">
+          </div>
+          <button id="generate-styles-btn" class="button button-primary">Generate unique styles from your DID</button>
+        </div>
+        <div id="onboarding-step-2" style="display: none;">
+          <p>Your unique theme has been generated! Here is a visualization of your DID:</p>
+          <did-visualization did="${this.did}"></did-visualization>
+          <p class="favicon-note">this is the generated favicon for your garden's page.</p>
+          <theme-metadata></theme-metadata>
+          <button id="save-continue-btn" class="button button-primary">Save & Continue</button>
+          <p class="edit-note">you can edit these colors later</p>
+        </div>
+      </div>
+    `;
 
-    const modal = document.createElement('div');
-    modal.className = 'welcome-content';
+    this.attachEventListeners();
+  }
 
-    // Header
-    const header = document.createElement('div');
-    header.className = 'welcome-header';
+  private attachEventListeners() {
+    const generateBtn = this.querySelector('#generate-styles-btn');
+    const saveBtn = this.querySelector('#save-continue-btn');
+    const titleInput = this.querySelector('#site-title') as HTMLInputElement;
+    const subtitleInput = this.querySelector('#site-subtitle') as HTMLInputElement;
 
-    const title = document.createElement('h1');
-    title.className = 'welcome-title';
-    title.textContent = 'Welcome to spores.garden';
-    header.appendChild(title);
+    if (generateBtn) {
+      generateBtn.addEventListener('click', () => {
+        if (this.did) {
+          const { theme, metadata } = generateThemeFromDid(this.did);
+          updateTheme(theme);
+          applyTheme(theme);
+          
+          if (titleInput && subtitleInput) {
+            updateConfig({
+              title: titleInput.value,
+              subtitle: subtitleInput.value
+            });
+          }
+          
+          this.querySelector('#onboarding-step-1').style.display = 'none';
+          this.querySelector('#onboarding-step-2').style.display = 'block';
 
-    const subtitle = document.createElement('p');
-    subtitle.className = 'welcome-subtitle';
-    subtitle.textContent = 'Choose how you\'d like to start building your site';
-    header.appendChild(subtitle);
+          const themeMetadataEl = this.querySelector('theme-metadata');
+          if (themeMetadataEl) {
+            themeMetadataEl.setAttribute('metadata', JSON.stringify({ theme, metadata }));
+          }
+        }
+      });
+    }
 
-    modal.appendChild(header);
-
-    // Actions grid
-    const actions = document.createElement('div');
-    actions.className = 'welcome-actions';
-
-    // Create Content Block
-    const createBlock = this.createActionCard({
-      icon: '📝',
-      title: 'Create Content Block',
-      description: 'Add a new custom content section to your site',
-      action: () => this.handleCreateContent()
-    });
-    actions.appendChild(createBlock);
-
-    // Select Bluesky Posts
-    const selectPosts = this.createActionCard({
-      icon: '🐘',
-      title: 'Showcase Bluesky Posts',
-      description: 'Choose your favorite posts to display on your site',
-      action: () => this.handleSelectBskyPosts()
-    });
-    actions.appendChild(selectPosts);
-
-    // Explore your data
-    const loadRecords = this.createActionCard({
-      icon: '📚',
-      title: 'Explore your data',
-      description: 'Browse and select records from your AT Protocol repository',
-      action: () => this.handleLoadRecords()
-    });
-    actions.appendChild(loadRecords);
-
-    modal.appendChild(actions);
-
-    // Footer
-    const footer = document.createElement('div');
-    footer.className = 'welcome-footer';
-
-    const skipBtn = document.createElement('button');
-    skipBtn.className = 'button button-ghost';
-    skipBtn.textContent = 'Skip for now';
-    skipBtn.addEventListener('click', () => this.close());
-    footer.appendChild(skipBtn);
-
-    modal.appendChild(footer);
-
-    this.appendChild(modal);
-
-    // Handle backdrop click
-    this.addEventListener('click', (e) => {
-      if (e.target === this) {
+    if (saveBtn) {
+      saveBtn.addEventListener('click', async () => {
+        await saveConfig({ isInitialOnboarding: true });
         this.close();
-      }
-    });
+      });
+    }
   }
 
   private createActionCard(options: {

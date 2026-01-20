@@ -7,7 +7,7 @@
    Google Fonts Import
    ============================================ */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&family=Roboto:wght@400;700&family=Roboto+Slab:wght@400;700&family=Playfair+Display:wght@400;700&family=Source+Sans+Pro:wght@400;700&family=Montserrat:wght@400;700&family=Lato:wght@400;700&family=Oswald:wght@400;700&display=swap');
 
 /* ============================================
    CSS Custom Properties
@@ -40,6 +40,7 @@
   --border-width: 2px;
   --border-width-thick: 4px;
   --border-width-extra-thick: 20px;
+  --border-style: solid;
 
   /* Transitions */
   --transition: 150ms ease;
@@ -184,7 +185,7 @@ site-app {
   align-items: center;
   margin-bottom: var(--spacing-lg);
   padding-bottom: var(--spacing-md);
-  border-bottom: var(--border-width) solid var(--color-border-dark);
+  border-bottom: var(--border-width) var(--border-style, solid) var(--color-border-dark);
 }
 
 .section-title {
@@ -206,7 +207,7 @@ site-app {
   align-items: center;
   padding: var(--spacing-sm) var(--spacing-md);
   background: var(--color-surface);
-  border: 2px solid var(--color-border);
+  border: 2px var(--border-style, solid) var(--color-border);
   font-family: var(--font-mono);
   font-size: 0.875rem;
   color: var(--color-text-muted);
@@ -232,7 +233,7 @@ site-app {
   font-family: inherit;
   font-size: 1rem;
   padding: var(--spacing-md);
-  border: 2px solid var(--color-border-dark);
+  border: 2px var(--border-style, solid) var(--color-border-dark);
   border-radius: 0;
   background: var(--color-background);
   color: var(--color-text);
@@ -267,7 +268,7 @@ site-app {
   font-size: 0.875rem;
   font-weight: 700;
   padding: var(--spacing-md) var(--spacing-lg);
-  border: var(--border-width) solid var(--color-border-dark);
+  border: var(--border-width) var(--border-style, solid) var(--color-border-dark);
   border-radius: 0;
   background: var(--color-text);
   color: var(--color-background);
@@ -294,13 +295,13 @@ site-app {
 .button-primary {
   background: var(--color-text);
   color: var(--color-background);
-  border: var(--border-width) solid var(--color-border-dark);
+  border: var(--border-width) var(--border-style, solid) var(--color-border-dark);
 }
 
 .button-secondary {
   background: var(--color-text-muted);
   color: var(--color-background);
-  border: var(--border-width) solid var(--color-border-muted);
+  border: var(--border-width) var(--border-style, solid) var(--color-border-muted);
 }
 
 .modal-actions .button-secondary {
@@ -310,7 +311,7 @@ site-app {
 .button-ghost {
   background: transparent;
   color: var(--color-text);
-  border: var(--border-width) solid transparent;
+  border: var(--border-width) var(--border-style, solid) transparent;
 }
 
 .button-ghost:hover {
@@ -367,7 +368,7 @@ site-app {
 .modal-content {
   background: var(--color-background);
   padding: var(--spacing-xl);
-  border: var(--border-width-thick) solid var(--color-border-dark);
+  border: var(--border-width-thick) var(--border-style, solid) var(--color-border-dark);
   max-width: 400px;
   width: 90%;
   margin: var(--spacing-md);
@@ -402,10 +403,10 @@ site-app {
 .config-modal-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: baseline;
   margin-bottom: var(--spacing-lg);
   padding-bottom: var(--spacing-md);
-  border-bottom: var(--border-width) solid var(--color-border);
+  border-bottom: var(--border-width) var(--border-style, solid) var(--color-border);
 }
 
 .config-modal-header h2 {
@@ -511,7 +512,7 @@ site-app {
   gap: var(--spacing-sm);
   padding: var(--spacing-lg);
   background: var(--color-background);
-  border: var(--border-width) solid var(--color-border-dark);
+  border: var(--border-width) var(--border-style, solid) var(--color-border-dark);
   cursor: pointer;
   transition: all var(--transition);
   text-transform: uppercase;
@@ -546,7 +547,7 @@ site-app {
   color: #dc2626;
   padding: var(--spacing-lg);
   background: #fef2f2;
-  border: var(--border-width) solid #dc2626;
+  border: var(--border-width) var(--border-style, solid) #dc2626;
   font-weight: 600;
 }
 
@@ -595,7 +596,7 @@ site-app {
   right: 0;
   padding: var(--spacing-md);
   background: var(--color-background);
-  border-top: var(--border-width-thick) solid var(--color-border-dark);
+  border-top: var(--border-width-thick) var(--border-style, solid) var(--color-border-dark);
   text-align: center;
 }
 
@@ -616,7 +617,7 @@ site-app {
 
 .welcome-content {
   background: var(--color-background);
-  border: var(--border-width-thick) solid var(--color-border-dark);
+  border: var(--border-width-thick) var(--border-style, solid) var(--color-border-dark);
   max-width: 800px;
   width: 100%;
   max-height: 90vh;
@@ -656,7 +657,7 @@ site-app {
   gap: var(--spacing-md);
   padding: var(--spacing-xl);
   background: var(--color-background);
-  border: var(--border-width) solid var(--color-border-dark);
+  border: var(--border-width) var(--border-style, solid) var(--color-border-dark);
   cursor: pointer;
   transition: all var(--transition);
   text-align: center;
@@ -697,7 +698,7 @@ site-app {
 .welcome-footer {
   text-align: center;
   padding-top: var(--spacing-lg);
-  border-top: var(--border-width) solid var(--color-border);
+  border-top: var(--border-width) var(--border-style, solid) var(--color-border);
 }
 
 .welcome-loading,
@@ -715,7 +716,7 @@ site-app {
 .spinner {
   width: 40px;
   height: 40px;
-  border: var(--border-width-thick) solid var(--color-border);
+  border: var(--border-width-thick) var(--border-style, solid) var(--color-border);
   border-top-color: var(--color-text);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
@@ -760,7 +761,7 @@ site-app {
   gap: var(--spacing-md);
   padding: var(--spacing-md);
   background: var(--color-surface);
-  border: var(--border-width) solid var(--color-border);
+  border: var(--border-width) var(--border-style, solid) var(--color-border);
   cursor: pointer;
   transition: all var(--transition);
   font-family: inherit;
@@ -826,7 +827,7 @@ site-app {
 .template-card {
   padding: var(--spacing-lg);
   background: var(--color-surface);
-  border: var(--border-width) solid var(--color-border-dark);
+  border: var(--border-width) var(--border-style, solid) var(--color-border-dark);
   cursor: pointer;
   transition: all var(--transition);
   text-align: left;
@@ -872,7 +873,7 @@ site-app {
   display: flex;
   flex-direction: column;
   background: var(--color-surface);
-  border: var(--border-width) solid var(--color-border-dark);
+  border: var(--border-width) var(--border-style, solid) var(--color-border-dark);
   transition: all var(--transition);
   overflow: hidden;
 }
@@ -885,7 +886,7 @@ site-app {
   width: 100%;
   height: auto;
   display: block;
-  border-bottom: var(--border-width) solid var(--color-border-dark);
+  border-bottom: var(--border-width) var(--border-style, solid) var(--color-border-dark);
 }
 
 .card-body {
@@ -930,7 +931,7 @@ site-app {
   height: 80px;
   border-radius: 50%;
   object-fit: cover;
-  border: var(--border-width) solid var(--color-border-dark);
+  border: var(--border-width) var(--border-style, solid) var(--color-border-dark);
   flex-shrink: 0;
 }
 
@@ -951,7 +952,7 @@ site-app {
 /* Post Layout */
 .layout-post {
   padding: var(--spacing-lg);
-  border: var(--border-width) solid var(--color-border-dark);
+  border: var(--border-width) var(--border-style, solid) var(--color-border-dark);
   background: var(--color-background);
   max-width: 800px;
   margin: 0 auto;
@@ -977,7 +978,7 @@ site-app {
   height: 20px;
   border-radius: 50%;
   flex-shrink: 0;
-  border: var(--border-width) solid var(--color-border-dark);
+  border: var(--border-width) var(--border-style, solid) var(--color-border-dark);
 }
 
 .post-meta time {
@@ -993,7 +994,7 @@ site-app {
 .tag {
   padding: 0.25rem 0.5rem;
   background: var(--color-background);
-  border: var(--border-width) solid var(--color-border-dark);
+  border: var(--border-width) var(--border-style, solid) var(--color-border-dark);
   color: var(--color-text);
   font-size: 0.75rem;
   text-transform: uppercase;
@@ -1004,7 +1005,7 @@ site-app {
   width: 100%;
   height: auto;
   margin: var(--spacing-md) 0;
-  border: var(--border-width) solid var(--color-border-dark);
+  border: var(--border-width) var(--border-style, solid) var(--color-border-dark);
 }
 
 .layout-post .post-content {
@@ -1044,7 +1045,7 @@ site-app {
 
 .guestbook-entry {
   padding: var(--spacing-md);
-  border: var(--border-width) solid var(--color-border-dark);
+  border: var(--border-width) var(--border-style, solid) var(--color-border-dark);
   background: var(--color-background);
   max-width: 600px;
   flex: 1 1 300px;
@@ -1139,7 +1140,7 @@ site-app {
   width: 100%;
   height: auto;
   display: block;
-  border: var(--border-width) solid var(--color-border-dark);
+  border: var(--border-width) var(--border-style, solid) var(--color-border-dark);
 }
 
 .image-gallery {
@@ -1152,7 +1153,7 @@ site-app {
   width: 100%;
   height: auto;
   display: block;
-  border: var(--border-width) solid var(--color-border-dark);
+  border: var(--border-width) var(--border-style, solid) var(--color-border-dark);
 }
 
 .image-caption {
@@ -1167,7 +1168,7 @@ site-app {
   display: flex;
   gap: var(--spacing-md);
   padding: var(--spacing-md);
-  border: var(--border-width) solid var(--color-border-dark);
+  border: var(--border-width) var(--border-style, solid) var(--color-border-dark);
   background: var(--color-surface);
   text-decoration: none;
   color: var(--color-text);
@@ -1184,7 +1185,7 @@ site-app {
   height: 120px;
   object-fit: cover;
   flex-shrink: 0;
-  border: var(--border-width) solid var(--color-border-dark);
+  border: var(--border-width) var(--border-style, solid) var(--color-border-dark);
 }
 
 .link-body {
@@ -1222,7 +1223,7 @@ site-app {
   align-items: center;
   gap: var(--spacing-sm);
   padding: var(--spacing-md);
-  border: var(--border-width) solid var(--color-border-dark);
+  border: var(--border-width) var(--border-style, solid) var(--color-border-dark);
   background: var(--color-surface);
   text-decoration: none;
   color: var(--color-text);
@@ -1256,7 +1257,7 @@ site-app {
 
 .list-item {
   padding: var(--spacing-md);
-  border: var(--border-width) solid var(--color-border-dark);
+  border: var(--border-width) var(--border-style, solid) var(--color-border-dark);
   background: var(--color-surface);
   color: var(--color-text);
 }
@@ -1294,7 +1295,7 @@ site-app {
    ============================================ */
 
 .site-config {
-  border: var(--border-width-thick) solid var(--color-border-dark);
+  border: var(--border-width-thick) var(--border-style, solid) var(--color-border-dark);
   margin: var(--spacing-lg);
   background: var(--color-surface);
 }
@@ -1311,7 +1312,7 @@ site-app {
 
 .site-config-header {
   padding: var(--spacing-md) var(--spacing-lg);
-  border-bottom: var(--border-width) solid var(--color-border-dark);
+  border-bottom: var(--border-width) var(--border-style, solid) var(--color-border-dark);
   background: var(--color-background);
 }
 
@@ -1368,7 +1369,7 @@ site-app {
 .color-input {
   width: 100%;
   height: 40px;
-  border: var(--border-width) solid var(--color-border-dark);
+  border: var(--border-width) var(--border-style, solid) var(--color-border-dark);
   background: var(--color-background);
   cursor: pointer;
   padding: 0;
@@ -1406,7 +1407,7 @@ site-app {
   z-index: 3000;
   max-width: 400px;
   background: var(--color-background);
-  border: var(--border-width-thick) solid var(--color-border-dark);
+  border: var(--border-width-thick) var(--border-style, solid) var(--color-border-dark);
   box-shadow: 8px 8px 0 rgba(0, 0, 0, 0.1);
   transition: opacity var(--transition);
 }
