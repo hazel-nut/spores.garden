@@ -349,6 +349,9 @@ export async function deleteRecord(collection: string, rkey: string) {
   });
 
   if (!response.ok) {
+    if (response.status === 404) {
+      return null;
+    }
     const errorMsg = response.data?.message || response.data?.error || 'Unknown error';
     throw new Error(`Failed to delete record: ${errorMsg}`);
   }
