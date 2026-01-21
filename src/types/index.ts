@@ -17,7 +17,7 @@ export interface SiteConfig {
 
 export interface Section {
   id: string;
-  type: 'profile' | 'records' | 'content' | 'block' | 'guestbook';
+  type: 'profile' | 'records' | 'content' | 'block' | 'share-to-bluesky';
   layout?: string;
   title?: string;
   collection?: string;

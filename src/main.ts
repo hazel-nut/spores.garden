@@ -5,3 +5,4 @@
 
 import './components/site-app';
 import './components/welcome-modal';
+import './components/recent-gardens';

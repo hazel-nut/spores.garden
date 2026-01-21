@@ -12,10 +12,10 @@ npm run dev
 ```
 
 Then open one of:
-- `http://localhost:5173/@your-handle.bsky.social` (path-based with handle)
-- `http://localhost:5173/@did:plc:your-did-here` (path-based with DID)
-- `http://localhost:5173?did=did:plc:your-did-here` (query param with DID)
-- `http://localhost:5173?handle=your-handle.bsky.social` (query param with handle)
+- `http://localhost:5174/@your-handle.bsky.social` (path-based with handle)
+- `http://localhost:5174/@did:plc:your-did-here` (path-based with DID)
+- `http://localhost:5174?did=did:plc:your-did-here` (query param with DID)
+- `http://localhost:5174?handle=your-handle.bsky.social` (query param with handle)
 
 The app automatically resolves handles to DIDs using the AT Protocol identity service.
 
@@ -33,7 +33,7 @@ Your content stays in your PDS. The website is just a view.
 
 - `garden.spores.site.config` - Site configuration
 - `garden.spores.site.content` - Custom content blocks
-- `garden.spores.guestbook.entry` - Guestbook signatures
+- `garden.spores.item.specialSpore` - Special spore items (capture-the-flag mechanic)
 
 ## Architecture
 
@@ -42,7 +42,7 @@ Static Site → Slingshot (records) + Constellation (backlinks) → Your PDS
 ```
 
 - **Slingshot**: Fast record fetching cache
-- **Constellation**: Backlink indexing for guestbook
+- **Constellation**: Backlink indexing for flower interactions and special spore tracking
 - **atcute**: OAuth for AT Protocol
 
 ## Layouts
@@ -57,9 +57,22 @@ Static Site → Slingshot (records) + Constellation (backlinks) → Your PDS
 | `list` | Generic list |
 | `profile` | About section |
 | `raw` | Custom HTML |
-| `guestbook` | Guestbook |
+| `flower-bed` | Flower garden display |
+| `collected-flowers` | Collected flowers display |
+| `special-spore-display` | Special spore capture-the-flag display |
 
 Layouts extract common fields (title, content, image, date, etc.) from any lexicon.
+
+## Special Spores
+
+Special spores are rare, gamified items that implement a capture-the-flag mechanic:
+
+- **Rarity**: Only 1 in 10 new gardens receives a special spore (10% probability on first config)
+- **Capture Mechanics**: Users can steal spores from gardens (with restrictions)
+- **Backlink-Based**: All spore records reference the origin garden via backlinks, enabling full lineage tracking
+- **Evolution**: Complete history of all captures is preserved and displayed chronologically
+
+See [Special Spore Documentation](docs/special-spore.md) for detailed implementation and mechanics.
 
 ## Themes
 

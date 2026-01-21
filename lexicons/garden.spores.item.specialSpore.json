@@ -1,0 +1,48 @@
+{
+  "lexicon": 1,
+  "id": "garden.spores.item.specialSpore",
+  "defs": {
+    "main": {
+      "type": "record",
+      "description": "A special spore item that can be collected and stolen by other users. All spore records reference the origin garden DID via backlinks to enable capture-the-flag mechanics.",
+      "key": "self",
+      "record": {
+        "type": "object",
+        "required": ["subject", "ownerDid", "originGardenDid", "lastCapturedAt", "history"],
+        "properties": {
+          "subject": {
+            "type": "string",
+            "format": "did",
+            "description": "DID of the origin garden (same as originGardenDid). Used for backlink indexing."
+          },
+          "ownerDid": {
+            "type": "string",
+            "format": "did",
+            "description": "DID of the current holder of the spore"
+          },
+          "originGardenDid": {
+            "type": "string",
+            "format": "did",
+            "description": "DID of the garden where this spore originated. All spore records reference this DID via backlinks."
+          },
+          "lastCapturedAt": {
+            "type": "string",
+            "format": "datetime",
+            "description": "Timestamp when this record was created (when spore was captured by current holder)"
+          },
+          "history": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["did", "timestamp"],
+              "properties": {
+                "did": { "type": "string", "format": "did" },
+                "timestamp": { "type": "string", "format": "datetime" }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

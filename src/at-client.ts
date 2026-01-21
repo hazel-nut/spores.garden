@@ -10,6 +10,8 @@ import {
   WebDidDocumentResolver
 } from '@atcute/identity-resolver';
 import { ENDPOINTS } from './config/endpoints';
+import { deleteRecord } from './oauth'; // Import deleteRecord
+
 
 // Cache for resolved PDS endpoints
 const pdsCache = new Map<string, string>();
@@ -359,7 +361,7 @@ export async function describeRepo(did, agent = null) {
 }
 
 /**
- * Get backlinks from Constellation (for guestbook, etc.)
+ * Get backlinks from Constellation (for flower interactions, etc.)
  */
 export async function getBacklinks(subject, source, options = {}) {
   const { limit = 50, cursor } = options;
@@ -370,12 +372,24 @@ export async function getBacklinks(subject, source, options = {}) {
   url.searchParams.set('limit', limit.toString());
   if (cursor) url.searchParams.set('cursor', cursor);
 
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error(`Failed to get backlinks: ${response.status}`);
-  }
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => 'Unknown error');
+      throw new Error(
+        `Failed to get backlinks: ${response.status} ${response.statusText}. ${errorText}`
+      );
+    }
 
-  return response.json();
+    return response.json();
+  } catch (error) {
+    if (error instanceof TypeError && error.message.includes('fetch')) {
+      throw new Error(
+        `Network/CORS error: Unable to connect to ${ENDPOINTS.CONSTELLATION_URL}.`
+      );
+    }
+    throw error;
+  }
 }
 
 /**
@@ -429,4 +443,15 @@ export function parseAtUri(uri) {
  */
 export function buildAtUri(did, collection, rkey) {
   return `at://${did}/${collection}/${rkey}`;
+}
+
+/**
+ * Delete a record using its AT URI
+ */
+export async function deleteRecordByUri(atUri: string) {
+  const parsed = parseAtUri(atUri);
+  if (!parsed) {
+    throw new Error(`Invalid AT URI: ${atUri}`);
+  }
+  await deleteRecord(parsed.collection, parsed.rkey);
 }
