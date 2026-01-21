@@ -205,13 +205,13 @@ class SiteApp extends HTMLElement {
         configBtn.addEventListener('click', () => this.showConfigModal());
         controls.appendChild(configBtn);
 
-        // Edit mode toggle
+        // Edit/Save mode toggle
         const editBtn = document.createElement('button');
-        editBtn.className = 'button button-secondary';
-        editBtn.textContent = this.editMode ? 'Preview' : 'Edit';
-        editBtn.setAttribute('aria-label', this.editMode ? 'Switch to preview mode' : 'Switch to edit mode');
+        editBtn.className = this.editMode ? 'button button-primary' : 'button button-secondary';
+        editBtn.textContent = this.editMode ? 'Save' : 'Edit';
+        editBtn.setAttribute('aria-label', this.editMode ? 'Save changes and exit edit mode' : 'Enter edit mode');
         editBtn.setAttribute('aria-pressed', this.editMode.toString());
-        editBtn.addEventListener('click', () => this.toggleEditMode());
+        editBtn.addEventListener('click', () => this.editMode ? this.saveAndExitEdit() : this.toggleEditMode());
         controls.appendChild(editBtn);
 
         // Preview Sharecard button
@@ -440,14 +440,14 @@ class SiteApp extends HTMLElement {
       addBtn.addEventListener('click', () => this.showAddSectionModal());
       main.appendChild(addBtn);
 
-      // Save button
+      // Save button (secondary, at bottom of edit mode)
       const saveBar = document.createElement('div');
       saveBar.className = 'save-bar';
       const saveBtn = document.createElement('button');
       saveBtn.className = 'button button-primary save-btn';
       saveBtn.textContent = 'Save Changes';
-      saveBtn.setAttribute('aria-label', 'Save your changes to the garden');
-      saveBtn.addEventListener('click', () => this.save());
+      saveBtn.setAttribute('aria-label', 'Save your changes and exit edit mode');
+      saveBtn.addEventListener('click', () => this.saveAndExitEdit());
       saveBar.appendChild(saveBtn);
       main.appendChild(saveBar);
     }
@@ -569,6 +569,18 @@ class SiteApp extends HTMLElement {
   toggleEditMode() {
     this.editMode = !this.editMode;
     this.render();
+  }
+
+  async saveAndExitEdit() {
+    try {
+      await saveConfig();
+      this.editMode = false;
+      this.showNotification('Changes saved!', 'success');
+      this.render();
+    } catch (error) {
+      console.error('Failed to save:', error);
+      this.showNotification(`Failed to save: ${error.message}`, 'error');
+    }
   }
 
   showLoginModal() {
