@@ -355,4 +355,54 @@ export async function deleteRecord(collection: string, rkey: string) {
     const errorMsg = response.data?.message || response.data?.error || 'Unknown error';
     throw new Error(`Failed to delete record: ${errorMsg}`);
   }
+  return response.data;
+}
+
+/**
+ * Publish a post to Bluesky
+ */
+export async function post(record: unknown) {
+  if (!currentAgent) {
+    throw new Error('Not logged in');
+  }
+  if (!currentSession) {
+    throw new Error('Missing OAuth session');
+  }
+
+  // Use post() for procedures (com.atproto.repo.createRecord is a procedure)
+  const response = await currentAgent.post('com.atproto.repo.createRecord', {
+    input: {
+      repo: currentSession.info.sub,
+      collection: 'app.bsky.feed.post',
+      record: record
+    }
+  });
+
+  if (!response.ok) {
+    const errorMsg = response.data?.message || response.data?.error || 'Unknown error';
+    throw new Error(`Failed to create post: ${errorMsg}`);
+  }
+
+  return response.data;
+}
+
+/**
+ * Upload a blob (e.g., image) to the PDS
+ */
+export async function uploadBlob(blob: Blob, mimeType: string) {
+  if (!currentAgent) {
+    throw new Error('Not logged in');
+  }
+  if (!currentSession) {
+    throw new Error('Missing OAuth session');
+  }
+
+  const response = await currentAgent.uploadBlob(blob, mimeType);
+
+  if (!response.ok) {
+    const errorMsg = response.data?.message || response.data?.error || 'Unknown error';
+    throw new Error(`Failed to upload blob: ${errorMsg}`);
+  }
+
+  return response;
 }
