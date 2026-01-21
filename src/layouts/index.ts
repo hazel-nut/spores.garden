@@ -9,6 +9,7 @@ import { extractFields } from '../records/field-extractor';
 import { getProfile, parseAtUri } from '../at-client';
 import { sanitizeHtml, escapeHtml } from '../utils/sanitize';
 import { renderMarkdown, looksLikeMarkdown } from '../utils/markdown';
+import { renderFlowerBed } from './flower-bed';
 
 // Layout implementations
 const layouts = new Map();
@@ -437,6 +438,11 @@ registerLayout('raw', (fields) => {
 
   return html;
 });
+
+/**
+ * Flower Bed Layout - displays planted flowers
+ */
+registerLayout('flower-bed', renderFlowerBed);
 
 // ============================================
 // Helper Functions

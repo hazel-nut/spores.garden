@@ -4,7 +4,7 @@
  */
 
 import { initConfig, getConfig, getSiteOwnerDid, isOwner, saveConfig, setSiteOwnerDid, loadUserConfig, hasUserConfig, updateTheme } from '../config';
-import { initOAuth, isLoggedIn, getCurrentDid, login, logout } from '../oauth';
+import { initOAuth, isLoggedIn, getCurrentDid, login, logout, createRecord } from '../oauth';
 import { applyTheme, generateThemeFromDid } from '../themes/engine';
 import { escapeHtml } from '../utils/sanitize';
 import type { WelcomeModalElement, WelcomeAction } from '../types';
@@ -203,6 +203,14 @@ class SiteApp extends HTMLElement {
         editBtn.setAttribute('aria-pressed', this.editMode.toString());
         editBtn.addEventListener('click', () => this.toggleEditMode());
         controls.appendChild(editBtn);
+      } else if (!isOwnerLoggedIn && isViewingProfile) {
+        // "Plant your flower" button for visitors
+        const plantFlowerBtn = document.createElement('button');
+        plantFlowerBtn.className = 'button button-primary';
+        plantFlowerBtn.textContent = 'Plant your flower';
+        plantFlowerBtn.setAttribute('aria-label', 'Plant your flower in this garden');
+        plantFlowerBtn.addEventListener('click', () => this.plantFlower());
+        controls.appendChild(plantFlowerBtn);
       }
 
       // Logout button
@@ -389,6 +397,10 @@ class SiteApp extends HTMLElement {
             <span class="icon">📖</span>
             <span>Guestbook</span>
           </button>
+          <button data-type="flower-bed" class="section-type">
+            <span class="icon">🌸</span>
+            <span>Flower Bed</span>
+          </button>
           <button data-action="load-records" class="section-type">
             <span class="icon">📚</span>
             <span>Load Records</span>
@@ -458,6 +470,30 @@ class SiteApp extends HTMLElement {
 
     config.sections = [...(config.sections || []), section];
     this.render();
+  }
+
+  async plantFlower() {
+    if (!isLoggedIn()) {
+      this.showNotification('You must be logged in to plant a flower.', 'error');
+      return;
+    }
+
+    const ownerDid = getSiteOwnerDid();
+    if (!ownerDid) {
+      this.showNotification('Could not determine the garden owner.', 'error');
+      return;
+    }
+
+    try {
+      await createRecord('garden.spores.social.flower', {
+        subject: ownerDid,
+        createdAt: new Date().toISOString()
+      });
+      this.showNotification('You planted a flower in this garden!', 'success');
+    } catch (error) {
+      console.error('Failed to plant flower:', error);
+      this.showNotification(`Failed to plant flower: ${error.message}`, 'error');
+    }
   }
 
   showCreateContentModal() {
