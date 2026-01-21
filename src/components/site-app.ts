@@ -84,8 +84,13 @@ class SiteApp extends HTMLElement {
           } else {
             // New user - set as owner and show welcome
             setSiteOwnerDid(e.detail.did);
-            // Show welcome modal for first-time users
-            if (!this.hasShownWelcome) {
+            // Check if user has completed onboarding before (localStorage backup)
+            const hasCompletedOnboarding = this.hasCompletedOnboarding(detail.did);
+            // Also check PDS as primary source of truth
+            const hasConfig = await hasUserConfig(detail.did);
+            
+            // Show welcome modal only for truly new users
+            if (!this.hasShownWelcome && !hasCompletedOnboarding && !hasConfig) {
               this.showWelcome();
               this.hasShownWelcome = true;
             }
@@ -612,6 +617,12 @@ class SiteApp extends HTMLElement {
 
     const welcome = document.createElement('welcome-modal') as WelcomeModalElement;
     welcome.setOnClose(() => {
+      // Mark onboarding complete when welcome modal closes
+      // This serves as a backup in case PDS save fails
+      const currentDid = getCurrentDid();
+      if (currentDid) {
+        this.markOnboardingComplete(currentDid);
+      }
       this.render();
     });
     document.body.appendChild(welcome);
@@ -1127,6 +1138,30 @@ class SiteApp extends HTMLElement {
    */
   isViewingProfile(): boolean {
     return hasGardenIdentifierInUrl();
+  }
+
+  /**
+   * Check if user has completed onboarding (localStorage backup)
+   * This serves as a backup in case PDS check fails
+   */
+  private hasCompletedOnboarding(did: string): boolean {
+    try {
+      return localStorage.getItem(`spores.garden.hasCompletedOnboarding.${did}`) === 'true';
+    } catch (error) {
+      console.warn('Failed to check onboarding status from localStorage:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Mark user as having completed onboarding (localStorage backup)
+   */
+  private markOnboardingComplete(did: string): void {
+    try {
+      localStorage.setItem(`spores.garden.hasCompletedOnboarding.${did}`, 'true');
+    } catch (error) {
+      console.warn('Failed to save onboarding status to localStorage:', error);
+    }
   }
 
   /**
