@@ -138,6 +138,38 @@ site-app {
   align-items: center;
   padding: var(--spacing-lg);
   background: var(--color-background);
+  gap: var(--spacing-md);
+}
+
+/* Home Button with Dandelion Icon */
+.home-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+  color: var(--color-text);
+  text-decoration: none;
+  border: var(--border-width) var(--border-style, solid) var(--color-border-dark);
+  background: var(--color-background);
+  transition: all var(--transition);
+  padding: var(--spacing-xs);
+}
+
+.home-button:hover {
+  background: var(--color-text);
+  color: var(--color-background);
+  transform: scale(1.05);
+}
+
+.home-button:active {
+  transform: scale(0.98);
+}
+
+.dandelion-icon {
+  width: 100%;
+  height: 100%;
 }
 
 .site-title {
@@ -1693,9 +1725,13 @@ site-app {
 
 @media (max-width: 640px) {
   .header {
-    flex-direction: column;
-    gap: var(--spacing-md);
-    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: var(--spacing-sm);
+  }
+
+  .home-button {
+    width: 40px;
+    height: 40px;
   }
 
   .site-title {

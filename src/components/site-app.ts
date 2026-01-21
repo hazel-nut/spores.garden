@@ -170,6 +170,15 @@ class SiteApp extends HTMLElement {
     const header = document.createElement('header');
     header.className = 'header';
 
+    // Home button with dandelion icon (left side of header)
+    const homeButton = document.createElement('a');
+    homeButton.href = '/';
+    homeButton.className = 'home-button';
+    homeButton.setAttribute('aria-label', 'Go to home page');
+    homeButton.title = 'Go to home page';
+    homeButton.innerHTML = this.getDandelionIcon();
+    header.appendChild(homeButton);
+
     // Title and subtitle container
     const titleContainer = document.createElement('div');
     titleContainer.style.display = 'flex';
@@ -1176,6 +1185,57 @@ class SiteApp extends HTMLElement {
       console.error('Failed to check taken seeds:', error);
       return false;
     }
+  }
+
+  /**
+   * Generate dandelion SVG icon for home button
+   * A stylized dandelion that works as a recognizable home/brand icon
+   */
+  getDandelionIcon(): string {
+    return `<svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg" class="dandelion-icon">
+      <!-- Stem -->
+      <path d="M20 38 Q19 30 20 22" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+      <!-- Center seed head -->
+      <circle cx="20" cy="12" r="3" fill="currentColor"/>
+      <!-- Seed wisps radiating outward -->
+      <g stroke="currentColor" stroke-width="0.8" stroke-linecap="round">
+        <!-- Top -->
+        <line x1="20" y1="12" x2="20" y2="2"/>
+        <circle cx="20" cy="1.5" r="1" fill="currentColor"/>
+        <!-- Top-right -->
+        <line x1="20" y1="12" x2="27" y2="4"/>
+        <circle cx="27.5" cy="3.5" r="1" fill="currentColor"/>
+        <!-- Right -->
+        <line x1="20" y1="12" x2="30" y2="10"/>
+        <circle cx="30.5" cy="10" r="1" fill="currentColor"/>
+        <!-- Bottom-right -->
+        <line x1="20" y1="12" x2="28" y2="18"/>
+        <circle cx="28.5" cy="18.5" r="1" fill="currentColor"/>
+        <!-- Top-left -->
+        <line x1="20" y1="12" x2="13" y2="4"/>
+        <circle cx="12.5" cy="3.5" r="1" fill="currentColor"/>
+        <!-- Left -->
+        <line x1="20" y1="12" x2="10" y2="10"/>
+        <circle cx="9.5" cy="10" r="1" fill="currentColor"/>
+        <!-- Bottom-left -->
+        <line x1="20" y1="12" x2="12" y2="18"/>
+        <circle cx="11.5" cy="18.5" r="1" fill="currentColor"/>
+        <!-- Additional wisps for fullness -->
+        <line x1="20" y1="12" x2="24" y2="3"/>
+        <circle cx="24.5" cy="2.5" r="0.8" fill="currentColor"/>
+        <line x1="20" y1="12" x2="16" y2="3"/>
+        <circle cx="15.5" cy="2.5" r="0.8" fill="currentColor"/>
+        <line x1="20" y1="12" x2="29" y2="14"/>
+        <circle cx="29.5" cy="14" r="0.8" fill="currentColor"/>
+        <line x1="20" y1="12" x2="11" y2="14"/>
+        <circle cx="10.5" cy="14" r="0.8" fill="currentColor"/>
+      </g>
+      <!-- Small floating seed (adds whimsy) -->
+      <g transform="translate(32, 6)" opacity="0.6">
+        <line x1="0" y1="3" x2="0" y2="0" stroke="currentColor" stroke-width="0.5"/>
+        <circle cx="0" cy="0" r="0.8" fill="currentColor"/>
+      </g>
+    </svg>`;
   }
 }
 
