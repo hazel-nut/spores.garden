@@ -4,8 +4,8 @@
  */
 
 import { initConfig, getConfig, getSiteOwnerDid, isOwner, saveConfig, setSiteOwnerDid, loadUserConfig, hasUserConfig, updateTheme, hasGardenIdentifierInUrl } from '../config';
-import { initOAuth, isLoggedIn, getCurrentDid, login, logout, createRecord, uploadBlob, post } from '../oauth';
-import { getBacklinks, listRecords } from '../at-client';
+import { initOAuth, isLoggedIn, getCurrentDid, login, logout, createRecord, uploadBlob, post, getAgent, deleteRecord } from '../oauth';
+import { getBacklinks, listRecords, describeRepo } from '../at-client';
 import { applyTheme, generateThemeFromDid } from '../themes/engine';
 import { escapeHtml } from '../utils/sanitize';
 import { generateSocialCardImage } from '../utils/social-card';
@@ -17,7 +17,9 @@ import './site-config';
 
 class SiteApp extends HTMLElement {
   private hasShownWelcome = false;
-  
+  private editMode = false;
+  private renderId = 0;
+
   constructor() {
     super();
     this.editMode = false;
@@ -56,9 +58,7 @@ class SiteApp extends HTMLElement {
       // Port numbers in redirect_uri are ignored during matching
       const isLocalDev = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
       const port = location.port || (location.protocol === 'https:' ? '443' : '80');
-      const redirectUri = isLocalDev
-        ? `http://127.0.0.1:${port}/`
-        : `${location.origin}/`;
+      const redirectUri = `${location.origin}/`;
       const scope = 'atproto transition:generic';
 
       // Local dev: http://localhost?redirect_uri=...&scope=...
@@ -67,26 +67,19 @@ class SiteApp extends HTMLElement {
         ? `http://localhost?redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scope)}`
         : `${location.origin}/client-metadata.json`;
 
-      await initOAuth({
-        oauth: {
-          clientId,
-          redirectUri,
-          scope
-        }
-      });
-
-      // Listen for auth changes
-      window.addEventListener('auth-change', async (e) => {
+      // Listen for auth changes - MUST be before initOAuth to catch events from OAuth callback
+      window.addEventListener('auth-change', async (e: Event) => {
+        const detail = (e as CustomEvent).detail;
         // If user logged in and no site owner set, they become the owner
-        if (e.detail?.loggedIn && e.detail?.did && !getSiteOwnerDid()) {
+        if (detail?.loggedIn && detail?.did && !getSiteOwnerDid()) {
           // Try to load existing config for this user
-          const existingConfig = await loadUserConfig(e.detail.did);
-          
+          const existingConfig = await loadUserConfig(detail.did);
+
           if (existingConfig) {
             // User has existing config - set as owner and don't show welcome
-            setSiteOwnerDid(e.detail.did);
+            setSiteOwnerDid(detail.did);
             // Apply theme from loaded config
-            applyTheme(existingConfig.theme, existingConfig.customCss);
+            applyTheme(existingConfig.theme);
           } else {
             // New user - set as owner and show welcome
             setSiteOwnerDid(e.detail.did);
@@ -99,15 +92,23 @@ class SiteApp extends HTMLElement {
         }
         this.render();
       });
-      
+
+      await initOAuth({
+        oauth: {
+          clientId,
+          redirectUri,
+          scope
+        }
+      });
+
       // Listen for config updates
       window.addEventListener('config-updated', () => {
         const config = getConfig();
         // Re-apply theme when config is updated
-        applyTheme(config.theme, config.customCss);
+        applyTheme(config.theme);
         this.render();
       });
-      
+
       // Listen for add section requests
       window.addEventListener('add-section', (e) => {
         this.editMode = true;
@@ -125,30 +126,8 @@ class SiteApp extends HTMLElement {
         this.showConfigModal();
       });
 
-      // If already logged in and no owner set, set current user as owner
-      if (isLoggedIn() && !getSiteOwnerDid()) {
-        const currentDid = getCurrentDid();
-        // Try to load existing config for this user
-        const existingConfig = await loadUserConfig(currentDid);
-        
-        if (existingConfig) {
-          // User has existing config - set as owner and don't show welcome
-          setSiteOwnerDid(currentDid);
-          // Apply theme from loaded config
-          applyTheme(existingConfig.theme, existingConfig.customCss);
-        } else {
-          // New user - set as owner and show welcome
-          setSiteOwnerDid(currentDid);
-          // Show welcome modal for first-time users
-          if (!this.hasShownWelcome) {
-            this.showWelcome();
-            this.hasShownWelcome = true;
-          }
-        }
-      }
-
       // Apply theme
-      applyTheme(config.theme, config.customCss);
+      applyTheme(config.theme);
 
       // Render
       await this.render();
@@ -166,6 +145,7 @@ class SiteApp extends HTMLElement {
   }
 
   async render() {
+    const myRenderId = ++this.renderId;
     const config = getConfig();
     const ownerDid = getSiteOwnerDid();
     const isOwnerLoggedIn = isOwner();
@@ -233,6 +213,14 @@ class SiteApp extends HTMLElement {
         editBtn.addEventListener('click', () => this.toggleEditMode());
         controls.appendChild(editBtn);
 
+        // Preview Sharecard button
+        const previewSharecardBtn = document.createElement('button');
+        previewSharecardBtn.className = 'button button-secondary';
+        previewSharecardBtn.textContent = 'Preview Sharecard';
+        previewSharecardBtn.setAttribute('aria-label', 'Preview the social card image for your garden');
+        previewSharecardBtn.addEventListener('click', () => this.previewSharecard());
+        controls.appendChild(previewSharecardBtn);
+
         // Share to Bluesky button
         const shareBtn = document.createElement('button');
         shareBtn.className = 'button button-secondary';
@@ -260,6 +248,9 @@ class SiteApp extends HTMLElement {
           this.checkHasPlantedFlower(ownerDid, currentDid),
           this.checkHasTakenSeed(currentDid, ownerDid)
         ]);
+
+        // Guard against race conditions - if a new render started while we were awaiting, abort
+        if (this.renderId !== myRenderId) return;
 
         // "View My Garden" button for visitors
         if (currentDid) {
@@ -349,7 +340,7 @@ class SiteApp extends HTMLElement {
         heading.style.textAlign = 'center';
         heading.textContent = 'Login to start gardening!';
         homepageView.appendChild(heading);
-        
+
         const loginBtn = document.createElement('button');
         loginBtn.className = 'button';
         loginBtn.style.marginTop = 'var(--spacing-md)';
@@ -398,7 +389,7 @@ class SiteApp extends HTMLElement {
         text.style.justifyContent = 'center';
         text.style.alignItems = 'baseline';
         text.style.flexWrap = 'wrap';
-        
+
         const span1 = document.createElement('span');
         span1.textContent = 'Click ';
         text.appendChild(span1);
@@ -421,7 +412,7 @@ class SiteApp extends HTMLElement {
         heading.textContent = 'This garden is empty.';
         emptyState.appendChild(heading);
       }
-      
+
       main.appendChild(emptyState);
     } else {
       // Viewing a profile with sections
@@ -429,12 +420,12 @@ class SiteApp extends HTMLElement {
         const sectionEl = document.createElement('section-block');
         sectionEl.setAttribute('data-section', JSON.stringify(section));
         sectionEl.setAttribute('data-edit-mode', this.editMode.toString());
-        
+
         // Listen for share-to-bluesky events from share sections
         sectionEl.addEventListener('share-to-bluesky', () => {
           this.shareToBluesky();
         });
-        
+
         main.appendChild(sectionEl);
       }
     }
@@ -461,7 +452,118 @@ class SiteApp extends HTMLElement {
     }
 
     this.appendChild(main);
+
+    // Dev tool: Reset button (only on localhost/127.0.0.1 AND logged in)
+    const isLocalDev = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+    if (isLocalDev && isLoggedIn()) {
+      const devResetBtn = document.createElement('button');
+      devResetBtn.className = 'dev-reset-button';
+      devResetBtn.textContent = 'Reset Garden Data';
+      devResetBtn.setAttribute('aria-label', 'Delete all garden.spores.* localStorage and PDS records (dev only)');
+      devResetBtn.title = 'Delete all garden.spores.* localStorage and PDS records';
+      devResetBtn.addEventListener('click', () => this.resetGardenData());
+      this.appendChild(devResetBtn);
+    }
   }
+
+  async resetGardenData() {
+    const confirmReset = confirm('This will delete all garden.spores.* records from localStorage AND your PDS. Are you sure?');
+    if (!confirmReset) return;
+
+    const currentDid = getCurrentDid();
+    if (!currentDid) {
+      this.showNotification('Could not determine your DID.', 'error');
+      return;
+    }
+
+    this.showNotification('Deleting garden data...', 'success');
+
+    let deletedLocalStorage = 0;
+    let deletedPdsRecords = 0;
+    const errors: string[] = [];
+
+    try {
+      // 1. Delete localStorage records
+      const keysToDelete: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('garden.spores.')) {
+          keysToDelete.push(key);
+        }
+      }
+      keysToDelete.forEach(key => localStorage.removeItem(key));
+      deletedLocalStorage = keysToDelete.length;
+
+      // 2. Delete PDS records - dynamically discover all garden.spores.* collections
+      let gardenCollections: string[] = [];
+      try {
+        const repoInfo = await describeRepo(currentDid, getAgent());
+        // Filter collections to only include garden.spores.* ones
+        gardenCollections = (repoInfo.collections || []).filter((col: string) => col.startsWith('garden.spores.'));
+        console.log(`Found ${gardenCollections.length} garden.spores.* collections:`, gardenCollections);
+      } catch (error) {
+        console.error('Failed to describe repo, using fallback collection list:', error);
+        // Fallback to known collections if describeRepo fails
+        gardenCollections = [
+          'garden.spores.config',
+          'garden.spores.site.config',
+          'garden.spores.site.sections',
+          'garden.spores.site.style',
+          'garden.spores.social.flower',
+          'garden.spores.social.takenFlower',
+          'garden.spores.content.block',
+          'garden.spores.content.image'
+        ];
+      }
+
+      // For each collection, list and delete all records
+      for (const collection of gardenCollections) {
+        try {
+          console.log(`Checking collection: ${collection}`);
+          const response = await listRecords(currentDid, collection, { limit: 100 }, getAgent());
+          console.log(`Response for ${collection}:`, response);
+          const records = response?.records || [];
+          console.log(`Found ${records.length} records in ${collection}`);
+
+          for (const record of records) {
+            try {
+              // Extract rkey from the URI (format: at://did/collection/rkey)
+              const uriParts = record.uri.split('/');
+              const rkey = uriParts[uriParts.length - 1];
+
+              console.log(`Deleting ${collection}/${rkey}`);
+              await deleteRecord(collection, rkey);
+              deletedPdsRecords++;
+            } catch (error) {
+              console.error(`Failed to delete record ${record.uri}:`, error);
+              errors.push(`${collection}/${record.uri.split('/').pop()}`);
+            }
+          }
+        } catch (error) {
+          // Collection might not exist, which is fine
+          console.log(`Error checking ${collection}:`, error);
+        }
+      }
+
+      // Show summary
+      let message = `Deleted ${deletedLocalStorage} localStorage records and ${deletedPdsRecords} PDS records.`;
+      if (errors.length > 0) {
+        message += ` Failed to delete ${errors.length} records.`;
+      }
+      message += ' Reloading...';
+
+      this.showNotification(message, errors.length > 0 ? 'error' : 'success');
+
+      // Reload the page after a short delay
+      setTimeout(() => {
+        location.reload();
+      }, 2000);
+    } catch (error) {
+      console.error('Failed to reset garden data:', error);
+      this.showNotification(`Failed to reset: ${error.message}`, 'error');
+    }
+  }
+
 
   toggleEditMode() {
     this.editMode = !this.editMode;
@@ -507,7 +609,7 @@ class SiteApp extends HTMLElement {
       return;
     }
 
-    const welcome = document.createElement('welcome-modal');
+    const welcome = document.createElement('welcome-modal') as WelcomeModalElement;
     welcome.setOnClose(() => {
       this.render();
     });
@@ -579,7 +681,7 @@ class SiteApp extends HTMLElement {
       btn.addEventListener('click', () => {
         const type = btn.dataset.type;
         const action = btn.dataset.action;
-        
+
         if (action) {
           modal.remove();
           this.handleWelcomeAction(action);
@@ -752,7 +854,7 @@ class SiteApp extends HTMLElement {
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       const note = noteInput.value.trim();
-      
+
       modal.remove();
 
       try {
@@ -760,7 +862,7 @@ class SiteApp extends HTMLElement {
           sourceDid: ownerDid,
           createdAt: new Date().toISOString()
         };
-        
+
         // Only include note if provided
         if (note) {
           recordData.note = note;
@@ -828,43 +930,82 @@ class SiteApp extends HTMLElement {
     }
   }
 
+  async previewSharecard() {
+    try {
+      this.showNotification('Generating social card preview...', 'success');
+      const imageBlob = await generateSocialCardImage();
+
+      // Convert blob to data URL for preview
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const dataUrl = reader.result as string;
+
+        // Create modal to display the preview
+        const modal = document.createElement('div');
+        modal.className = 'modal';
+        modal.innerHTML = `
+          <div class="modal-content" style="max-width: 800px;">
+            <h2>Social Card Preview</h2>
+            <div style="margin: var(--spacing-md) 0;">
+              <img src="${dataUrl}" alt="Social card preview" style="width: 100%; border-radius: var(--border-radius); border: 1px solid var(--border-color);">
+            </div>
+            <div class="modal-actions">
+              <button class="button button-primary modal-close">Close</button>
+            </div>
+          </div>
+        `;
+
+        modal.querySelector('.modal-close')?.addEventListener('click', () => modal.remove());
+        modal.addEventListener('click', (e) => {
+          if (e.target === modal) modal.remove();
+        });
+
+        document.body.appendChild(modal);
+      };
+      reader.readAsDataURL(imageBlob);
+    } catch (error) {
+      console.error('Failed to generate social card preview:', error);
+      this.showNotification(`Failed to generate preview: ${error.message}`, 'error');
+    }
+  }
+
 
   showCreateContentModal() {
     // Check if modal already exists
     let modal = document.querySelector('create-content') as HTMLElement & { setOnClose: (cb: () => void) => void; show: () => void };
-    
+
     if (!modal) {
       modal = document.createElement('create-content') as HTMLElement & { setOnClose: (cb: () => void) => void; show: () => void };
       document.body.appendChild(modal);
     }
-    
+
     modal.setOnClose(() => {
       this.render();
     });
-    
+
     modal.show();
   }
 
   showConfigModal() {
     // Check if modal already exists
     let modal = document.querySelector('.config-modal') as HTMLElement;
-    
+
     if (!modal) {
       modal = document.createElement('div');
       modal.className = 'modal config-modal';
-      
+
       const modalContent = document.createElement('div');
       modalContent.className = 'modal-content config-modal-content';
-      
+
       const header = document.createElement('div');
       header.className = 'config-modal-header';
       header.innerHTML = `
         <h2>Garden Configuration</h2>
         <button class="button button-ghost modal-close" aria-label="Close">×</button>
       `;
-      
+
       const configEditor = document.createElement('site-config');
-      
+
       // Add save button footer
       const footer = document.createElement('div');
       footer.className = 'modal-actions';
@@ -872,12 +1013,12 @@ class SiteApp extends HTMLElement {
         <button class="button button-primary" id="config-save-btn">Save Changes</button>
         <button class="button button-secondary modal-close">Cancel</button>
       `;
-      
+
       modalContent.appendChild(header);
       modalContent.appendChild(configEditor);
       modalContent.appendChild(footer);
       modal.appendChild(modalContent);
-      
+
       // Save button handler
       const saveBtn = footer.querySelector('#config-save-btn');
       saveBtn.addEventListener('click', async () => {
@@ -885,7 +1026,7 @@ class SiteApp extends HTMLElement {
           saveBtn.disabled = true;
           saveBtn.textContent = 'Saving...';
         }
-        
+
         try {
           await saveConfig();
           // Close modal on success
@@ -901,27 +1042,27 @@ class SiteApp extends HTMLElement {
           }
         }
       });
-      
+
       // Close handlers
       const closeBtn = header.querySelector('.modal-close');
       closeBtn.addEventListener('click', () => {
         modal.remove();
       });
-      
+
       const cancelBtn = footer.querySelector('.modal-close');
       cancelBtn.addEventListener('click', () => {
         modal.remove();
       });
-      
+
       modal.addEventListener('click', (e) => {
         if (e.target === modal) {
           modal.remove();
         }
       });
-      
+
       document.body.appendChild(modal);
     }
-    
+
     // Show modal
     modal.style.display = 'flex';
   }
@@ -1003,7 +1144,7 @@ class SiteApp extends HTMLElement {
    */
   async checkHasPlantedFlower(ownerDid: string, currentDid: string | null): Promise<boolean> {
     if (!currentDid) return false;
-    
+
     try {
       const response = await getBacklinks(ownerDid, 'garden.spores.social.flower:subject', { limit: 100 });
       const plantedFlowers = response.records || response.links || [];
@@ -1019,7 +1160,7 @@ class SiteApp extends HTMLElement {
    */
   async checkHasTakenSeed(currentDid: string | null, ownerDid: string): Promise<boolean> {
     if (!currentDid) return false;
-    
+
     try {
       const response = await listRecords(currentDid, 'garden.spores.social.takenFlower', { limit: 100 });
       const takenFlowers = response.records || [];
