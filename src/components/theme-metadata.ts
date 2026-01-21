@@ -37,7 +37,7 @@ class ThemeMetadata extends HTMLElement {
     this.innerHTML = `
       <div class="theme-metadata">
         <h3>Theme Generation Details</h3>
-        <p>Your unique DID was used to generate the following theme:</p>
+        <p>Your unique DID was used to generate the following theme. The colors, fonts, and visual style are all deterministically derived from your DID's cryptographic hash, ensuring your garden has a consistent, unique identity across the network.</p>
         <ul>
           <li><strong>Base Hue:</strong> ${metadata.hue}°</li>
           <li><strong>Background Color:</strong> <span style="background-color: ${theme.colors.background}; width: 1em; height: 1em; display: inline-block; border: 1px solid #ccc;"></span> ${theme.colors.background}</li>

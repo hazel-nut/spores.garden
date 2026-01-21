@@ -91,7 +91,11 @@ class WelcomeModal extends HTMLElement {
         </div>
         <div id="onboarding-step-2" style="display: none;">
           <p>Your unique theme has been generated! Here is a visualization of your DID:</p>
-          <did-visualization did="${this.did}"></did-visualization>
+          <div class="generative-art-explanation">
+            <p><strong>Your DID (Decentralized Identifier) generates a unique visual flower pattern.</strong> This is your digital signature—no two gardens look the same, and your flower remains consistent across the network.</p>
+            <p>The colors, patterns, and shape are derived from your DID's cryptographic hash, creating a one-of-a-kind garden theme that's yours forever.</p>
+          </div>
+          <did-visualization did="${this.did}" show-info></did-visualization>
           <p class="favicon-note">this is the generated favicon for your garden's page.</p>
           <theme-metadata></theme-metadata>
           <button id="save-continue-btn" class="button button-primary">Save & Continue</button>
@@ -269,6 +273,9 @@ class WelcomeModal extends HTMLElement {
       <div class="welcome-selector">
         <h2>Select Collection</h2>
         <p>Choose a collection to load records from</p>
+        <div class="form-hint" style="margin-bottom: var(--spacing-lg); font-style: normal;">
+          <strong>Advanced Feature:</strong> Load any AT Protocol record type to display. Rendering may vary—experiment and see what works!
+        </div>
         <div class="collection-list">
           ${collections.map(coll => `
             <button class="collection-item" data-collection="${coll}">

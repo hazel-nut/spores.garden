@@ -20,7 +20,7 @@ Run everything with npm (Vite handles dev/build):
 - `npm run build` builds production assets to `dist/`.
 - `npm run preview` serves the production build locally.
 - `npm start` is an alias for `dev`.
-Local dev expects `http://localhost:5173?did=did:plc:your-did-here` (see `spec.md`).
+Local dev expects `http://localhost:5174?did=did:plc:your-did-here` (see `spec.md`).
 
 ## Coding Style & Naming Conventions
 - Indentation: 2 spaces; use semicolons.

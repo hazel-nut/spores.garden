@@ -1,6 +1,10 @@
 import { renderFlowerBed } from '../layouts/flower-bed';
 import { renderCollectedFlowers } from '../layouts/collected-flowers';
 import { renderSpecialSporeDisplay } from './special-spore-display';
+import { renderImage } from './image';
+import { renderSmokeSignal } from './smoke-signal';
+import { renderLeaflet } from './leaflet';
+import { extractFields } from '../records/field-extractor';
 import { getConfig } from '../config';
 import { generateThemeFromDid } from '../themes/engine';
 import { buildAtUri } from '../at-client';
@@ -242,39 +246,7 @@ registerLayout('post', async (fields) => {
 /**
  * Image Layout - visual-first display
  */
-registerLayout('image', (fields) => {
-  const html = document.createElement('figure');
-  html.className = 'layout-image';
-
-  if (fields.image) {
-    const img = document.createElement('img');
-    img.src = fields.image;
-    img.alt = fields.title || fields.content || '';
-    img.className = 'image-main';
-    img.loading = 'lazy';
-    html.appendChild(img);
-  } else if (fields.images?.length > 0) {
-    const gallery = document.createElement('div');
-    gallery.className = 'image-gallery';
-    fields.images.slice(0, 4).forEach(src => {
-      const img = document.createElement('img');
-      img.src = src;
-      img.alt = '';
-      img.loading = 'lazy';
-      gallery.appendChild(img);
-    });
-    html.appendChild(gallery);
-  }
-
-  if (fields.title || fields.content) {
-    const caption = document.createElement('figcaption');
-    caption.className = 'image-caption';
-    caption.textContent = fields.title || fields.content;
-    html.appendChild(caption);
-  }
-
-  return html;
-});
+registerLayout('image', renderImage);
 
 /**
  * Link Layout - single link with preview
@@ -449,6 +421,16 @@ registerLayout('collected-flowers', renderCollectedFlowers);
  * Special Spore Display Layout - displays the special spore item
  */
 registerLayout('special-spore-display', renderSpecialSporeDisplay);
+
+/**
+ * Smoke Signal Events Layout - displays events (hosting/attending)
+ */
+registerLayout('smoke-signal', renderSmokeSignal);
+
+/**
+ * Leaflet.pub Layout - displays long-form articles from leaflet.pub (AT Protocol long-form publishing)
+ */
+registerLayout('leaflet', renderLeaflet);
 
 // ============================================ 
 // Helper Functions
