@@ -10,6 +10,8 @@ import {
   WebDidDocumentResolver
 } from '@atcute/identity-resolver';
 import { ENDPOINTS } from './config/endpoints';
+import { deleteRecord } from './oauth'; // Import deleteRecord
+
 
 // Cache for resolved PDS endpoints
 const pdsCache = new Map<string, string>();
@@ -429,4 +431,15 @@ export function parseAtUri(uri) {
  */
 export function buildAtUri(did, collection, rkey) {
   return `at://${did}/${collection}/${rkey}`;
+}
+
+/**
+ * Delete a record using its AT URI
+ */
+export async function deleteRecordByUri(atUri: string) {
+  const parsed = parseAtUri(atUri);
+  if (!parsed) {
+    throw new Error(`Invalid AT URI: ${atUri}`);
+  }
+  await deleteRecord(parsed.collection, parsed.rkey);
 }

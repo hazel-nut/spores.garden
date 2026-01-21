@@ -5,6 +5,7 @@ import { getThemePreset, generateThemeFromDid } from './themes/engine';
 const CONFIG_COLLECTION = 'garden.spores.site.config';
 const STYLE_COLLECTION = 'garden.spores.site.style';
 const SECTIONS_COLLECTION = 'garden.spores.site.sections';
+const SPECIAL_SPORE_COLLECTION = 'garden.spores.item.specialSpore';
 const CONFIG_RKEY = 'self';
 
 let currentConfig = null;
@@ -271,10 +272,26 @@ export async function saveConfig({ isInitialOnboarding = false } = {}) {
     putRecord(STYLE_COLLECTION, CONFIG_RKEY, styleToSave)
   ];
 
-  if (isInitialOnboarding || (sectionsToSave.sections && sectionsToSave.sections.length > 0)) {
-    promises.push(putRecord(SECTIONS_COLLECTION, CONFIG_RKEY, sectionsToSave));
+  if (isInitialOnboarding) {
+    if (sectionsToSave.sections && sectionsToSave.sections.length > 0) {
+        promises.push(putRecord(SECTIONS_COLLECTION, CONFIG_RKEY, sectionsToSave));
+    }
+    
+    // 1 in 10 chance to get a special spore
+    if (Math.random() < 0.1) {
+        promises.push(putRecord(SPECIAL_SPORE_COLLECTION, CONFIG_RKEY, {
+            $type: SPECIAL_SPORE_COLLECTION,
+            ownerDid: did,
+            lastCapturedAt: new Date().toISOString(),
+            history: [{ did: did, timestamp: new Date().toISOString() }]
+        }));
+    }
   } else {
-    promises.push(deleteRecord(SECTIONS_COLLECTION, CONFIG_RKEY));
+    if (sectionsToSave.sections && sectionsToSave.sections.length > 0) {
+        promises.push(putRecord(SECTIONS_COLLECTION, CONFIG_RKEY, sectionsToSave));
+    } else {
+        promises.push(deleteRecord(SECTIONS_COLLECTION, CONFIG_RKEY));
+    }
   }
 
   await Promise.all(promises);
