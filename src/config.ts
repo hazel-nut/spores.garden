@@ -417,10 +417,19 @@ export async function saveConfig({ isInitialOnboarding = false } = {}) {
   // Styles and sections are generated client-side from DID
   // No need to write them to PDS
 
-  // Only write config record - styles and sections are client-side generated
+  // Write config and sections to PDS
   const promises: Promise<any>[] = [
     putRecord(CONFIG_COLLECTION, CONFIG_RKEY, configToSave)
   ];
+
+  // Save sections configuration
+  // Even though we generate defaults client-side, we need to save user customizations (ordering, new sections)
+  if (currentConfig.sections) {
+    promises.push(putRecord(SECTIONS_COLLECTION, CONFIG_RKEY, {
+      $type: SECTIONS_COLLECTION,
+      sections: currentConfig.sections
+    }));
+  }
 
   // On first config, create special spore if lucky
   if (isFirstTimeConfig) {
