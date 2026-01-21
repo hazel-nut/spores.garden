@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Special Spore Test Helper</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+        }
+        .input-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #333;
+        }
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        input:focus {
+            outline: none;
+            border-color: #4CAF50;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 4px;
+            font-size: 16px;
+            cursor: pointer;
+            font-weight: 500;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        .result {
+            margin-top: 30px;
+            padding: 20px;
+            border-radius: 4px;
+            display: none;
+        }
+        .result.success {
+            background: #d4edda;
+            border: 2px solid #28a745;
+            color: #155724;
+        }
+        .result.failure {
+            background: #f8d7da;
+            border: 2px solid #dc3545;
+            color: #721c24;
+        }
+        .result h2 {
+            margin-top: 0;
+            font-size: 20px;
+        }
+        .result .icon {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+        .result .details {
+            margin-top: 15px;
+            font-family: monospace;
+            font-size: 13px;
+            background: rgba(0,0,0,0.05);
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .info-box {
+            background: #e7f3ff;
+            border-left: 4px solid #2196F3;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+        }
+        .info-box strong {
+            color: #1976D2;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🍄 Special Spore Test Helper</h1>
+        <p class="subtitle">Check if a DID will receive a special spore</p>
+        
+        <div class="info-box">
+            <strong>How it works:</strong> Special spores are assigned deterministically based on a DID. 
+            Only 1 in 10 gardens (10% probability) receive a spore. The same DID will always get the same result.
+        </div>
+
+        <div class="input-group">
+            <label for="didInput">Enter DID:</label>
+            <input 
+                type="text" 
+                id="didInput" 
+                placeholder="did:plc:abc123xyz..." 
+                value="did:plc:test123"
+            >
+        </div>
+
+        <button onclick="checkSpore()">Check Spore Probability</button>
+
+        <div id="result" class="result">
+            <div class="icon"></div>
+            <h2></h2>
+            <div class="details"></div>
+        </div>
+    </div>
+
+    <script>
+        function seededRandom(seed) {
+            let hash = 0;
+            for (let i = 0; i < seed.length; i++) {
+                hash = ((hash << 5) - hash) + seed.charCodeAt(i);
+                hash = hash & hash;
+            }
+            let state = Math.abs(hash);
+            
+            return function() {
+                state = (state * 1103515245 + 12345) & 0x7fffffff;
+                return state / 0x7fffffff;
+            };
+        }
+
+        function checkSpore() {
+            const did = document.getElementById('didInput').value.trim();
+            const resultDiv = document.getElementById('result');
+            
+            if (!did) {
+                alert('Please enter a DID');
+                return;
+            }
+
+            if (!did.startsWith('did:')) {
+                alert('DID must start with "did:"');
+                return;
+            }
+
+            const rng = seededRandom(did);
+            const value = rng();
+            const willGetSpore = value < 0.1;
+
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'result ' + (willGetSpore ? 'success' : 'failure');
+            
+            const icon = resultDiv.querySelector('.icon');
+            const title = resultDiv.querySelector('h2');
+            const details = resultDiv.querySelector('.details');
+
+            if (willGetSpore) {
+                icon.textContent = '✨';
+                title.textContent = 'This DID WILL receive a special spore!';
+                details.innerHTML = `
+                    <strong>DID:</strong> ${did}<br>
+                    <strong>Random Value:</strong> ${value.toFixed(6)}<br>
+                    <strong>Threshold:</strong> 0.100000 (10%)<br>
+                    <strong>Result:</strong> ${value.toFixed(6)} < 0.100000 ✅<br>
+                    <br>
+                    <strong>Next Steps:</strong><br>
+                    1. Login with this account<br>
+                    2. Complete initial onboarding<br>
+                    3. Add "Special Spore Display" section<br>
+                    4. Your spore will be visible!
+                `;
+            } else {
+                icon.textContent = '❌';
+                title.textContent = 'This DID will NOT receive a special spore';
+                details.innerHTML = `
+                    <strong>DID:</strong> ${did}<br>
+                    <strong>Random Value:</strong> ${value.toFixed(6)}<br>
+                    <strong>Threshold:</strong> 0.100000 (10%)<br>
+                    <strong>Result:</strong> ${value.toFixed(6)} >= 0.100000 ❌<br>
+                    <br>
+                    <strong>Note:</strong> This is deterministic - the same DID will always get the same result.
+                    You'll need to use a different account to get a spore.
+                `;
+            }
+
+            // Scroll to result
+            resultDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        // Allow Enter key to submit
+        document.getElementById('didInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                checkSpore();
+            }
+        });
+    </script>
+</body>
+</html>

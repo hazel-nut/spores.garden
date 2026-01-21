@@ -42,12 +42,12 @@ class WelcomeModal extends HTMLElement {
     if (!this.did) {
       this.did = getCurrentDid();
     }
-    
+
     // Ensure component is rendered
     if (!this.querySelector('.welcome-content')) {
       this.render();
     }
-    
+
     // Wait for render to complete, then trigger action
     setTimeout(() => {
       switch (action) {
@@ -99,7 +99,7 @@ class WelcomeModal extends HTMLElement {
           <p class="favicon-note">this is the generated favicon for your garden's page.</p>
           <theme-metadata></theme-metadata>
           <button id="save-continue-btn" class="button button-primary">Save & Continue</button>
-          <p class="edit-note">you can edit these colors later</p>
+
         </div>
       </div>
     `;
@@ -119,14 +119,14 @@ class WelcomeModal extends HTMLElement {
           const { theme, metadata } = generateThemeFromDid(this.did);
           updateTheme(theme);
           applyTheme(theme);
-          
+
           if (titleInput && subtitleInput) {
             updateConfig({
               title: titleInput.value,
               subtitle: subtitleInput.value
             });
           }
-          
+
           this.querySelector('#onboarding-step-1').style.display = 'none';
           this.querySelector('#onboarding-step-2').style.display = 'block';
 
@@ -188,7 +188,7 @@ class WelcomeModal extends HTMLElement {
 
     try {
       this.collections = await getCollections(this.did);
-      
+
       if (this.collections.length === 0) {
         this.showMessage('No collections found in your repository.');
         return;
@@ -329,18 +329,18 @@ class WelcomeModal extends HTMLElement {
         <p>Choose records from ${collection} to add to your site</p>
         <div class="record-list">
           ${records.map((record, idx) => {
-            const rkey = record.uri?.split('/').pop() || idx.toString();
-            const title = record.value?.text?.slice(0, 50) || 
-                         record.value?.title || 
-                         record.value?.name ||
-                         rkey;
-            return `
+      const rkey = record.uri?.split('/').pop() || idx.toString();
+      const title = record.value?.text?.slice(0, 50) ||
+        record.value?.title ||
+        record.value?.name ||
+        rkey;
+      return `
               <label class="record-item">
                 <input type="checkbox" value="${rkey}" data-uri="${record.uri || ''}">
                 <span class="record-title">${title}</span>
               </label>
             `;
-          }).join('')}
+    }).join('')}
         </div>
         <div class="selector-actions">
           <button class="button" data-action="add-records" data-collection="${collection}">Add Selected</button>
@@ -364,7 +364,7 @@ class WelcomeModal extends HTMLElement {
 
   private async addSelectedRecords(collection: string) {
     const selected = Array.from(this.querySelectorAll<HTMLInputElement>('.record-item input:checked'));
-    
+
     if (selected.length === 0) {
       alert('Please select at least one record.');
       return;
@@ -398,13 +398,13 @@ class WelcomeModal extends HTMLElement {
         <p>Choose a post to add to your garden</p>
         <div class="post-list">
           ${posts.map((post, idx) => {
-            const rkey = post.uri?.split('/').pop() || idx.toString();
-            const uri = post.uri || '';
-            const text = post.value?.text?.slice(0, 200) || 'Post';
-            const createdAt = post.value?.createdAt 
-              ? new Date(post.value.createdAt).toLocaleDateString()
-              : '';
-            return `
+      const rkey = post.uri?.split('/').pop() || idx.toString();
+      const uri = post.uri || '';
+      const text = post.value?.text?.slice(0, 200) || 'Post';
+      const createdAt = post.value?.createdAt
+        ? new Date(post.value.createdAt).toLocaleDateString()
+        : '';
+      return `
               <button class="post-item-selectable" data-uri="${uri}" data-rkey="${rkey}">
                 <div class="post-content">
                   <p class="post-text">${this.escapeHtml(text)}${text.length >= 200 ? '...' : ''}</p>
@@ -412,7 +412,7 @@ class WelcomeModal extends HTMLElement {
                 </div>
               </button>
             `;
-          }).join('')}
+    }).join('')}
         </div>
         <div class="selector-actions">
           <button class="button button-secondary" data-action="back-main">Back</button>
@@ -443,7 +443,7 @@ class WelcomeModal extends HTMLElement {
 
   private async addSelectedPosts() {
     const selected = Array.from(this.querySelectorAll<HTMLInputElement>('.post-item input:checked'));
-    
+
     if (selected.length === 0) {
       alert('Please select at least one post.');
       return;
