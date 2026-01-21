@@ -17,6 +17,11 @@
           "createdAt": {
             "type": "string",
             "format": "datetime"
+          },
+          "note": {
+            "type": "string",
+            "description": "Optional note or reason for taking this seed",
+            "maxLength": 500
           }
         }
       }

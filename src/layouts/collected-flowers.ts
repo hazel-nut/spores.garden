@@ -19,7 +19,7 @@ export async function renderCollectedFlowers(section) {
     const takenFlowers = response.records;
 
     if (takenFlowers.length === 0) {
-      el.innerHTML = '<p>You have not collected any flowers yet.</p>';
+      el.innerHTML = '<p>Visit other gardens and take their seeds to start your collection. Each flower links back to its source garden.</p>';
       return el;
     }
 
@@ -28,6 +28,7 @@ export async function renderCollectedFlowers(section) {
     
     for (const flowerRecord of takenFlowers) {
       const sourceDid = flowerRecord.value.sourceDid;
+      const note = flowerRecord.value.note;
       
       const flowerEl = document.createElement('div');
       flowerEl.className = 'flower-grid-item';
@@ -41,6 +42,15 @@ export async function renderCollectedFlowers(section) {
       link.appendChild(viz);
       
       flowerEl.appendChild(link);
+
+      // Display note if present
+      if (note) {
+        const noteEl = document.createElement('div');
+        noteEl.className = 'flower-note';
+        noteEl.textContent = note;
+        flowerEl.appendChild(noteEl);
+      }
+      
       grid.appendChild(flowerEl);
     }
     
