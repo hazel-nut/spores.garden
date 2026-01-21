@@ -1,6 +1,6 @@
 import { getRecord, resolveHandle } from './at-client';
 import { putRecord, getCurrentDid, isLoggedIn, deleteRecord } from './oauth';
-import { getThemePreset, generateThemeFromDid } from './themes/engine';
+import { getThemePreset, generateThemeFromDid, hasCustomThemeOverrides } from './themes/engine';
 import { registerGarden } from './components/recent-gardens';
 
 const CONFIG_COLLECTION = 'garden.spores.site.config';
@@ -28,12 +28,32 @@ function seededRandom(seed: string): () => number {
     hash = hash & hash; // Convert to 32bit integer
   }
   let state = Math.abs(hash);
-  
+
   // Linear Congruential Generator
-  return function() {
+  return function () {
     state = (state * 1103515245 + 12345) & 0x7fffffff;
     return state / 0x7fffffff;
   };
+}
+
+/**
+ * Validate if a spore is authentic (should exist for the given origin DID)
+ * 
+ * Prevents adversarial actors from creating fake spores by verifying that
+ * the origin garden should have received a spore based on deterministic generation.
+ * 
+ * @param originGardenDid - The DID where the spore was originally created
+ * @returns true if the spore is valid (origin DID had 10% chance), false otherwise
+ */
+export function isValidSpore(originGardenDid: string): boolean {
+  if (!originGardenDid) {
+    return false;
+  }
+
+  // Use the same deterministic logic as spore creation
+  const rng = seededRandom(originGardenDid);
+  // 1 in 10 chance - same as in saveConfig
+  return rng() < 0.1;
 }
 
 /**
@@ -73,7 +93,7 @@ function generateInitialSections(did: string): any[] {
   });
 
   // Randomly include optional sections (seed-based)
-  
+
   // One Bluesky post section (70% chance)
   if (rng() < 0.7) {
     sections.push({
@@ -126,7 +146,7 @@ function getDefaultConfig() {
       borderStyle: 'solid',
       borderWidth: '2px',
     },
-    customCss: '',
+
     sections: [],
   };
 }
@@ -257,37 +277,66 @@ export async function loadUserConfig(did) {
 
   try {
     const [configRecord, styleRecord, sectionsRecord] = await Promise.all([
-        getRecord(did, CONFIG_COLLECTION, CONFIG_RKEY),
-        getRecord(did, STYLE_COLLECTION, CONFIG_RKEY),
-        getRecord(did, SECTIONS_COLLECTION, CONFIG_RKEY)
+      getRecord(did, CONFIG_COLLECTION, CONFIG_RKEY),
+      getRecord(did, STYLE_COLLECTION, CONFIG_RKEY),
+      getRecord(did, SECTIONS_COLLECTION, CONFIG_RKEY)
     ]);
 
-    // If any record is missing, user is not fully onboarded
-    if (!configRecord || !styleRecord || !sectionsRecord) {
+    // Config record is required for onboarding check
+    // Style and sections are now optional (can be generated)
+    if (!configRecord) {
       return null;
     }
 
     const defaultConfig = getDefaultConfig();
     const config = configRecord.value;
-    const styleConfig = styleRecord.value;
-    const sectionsConfig = sectionsRecord.value;
+
+    // Generate theme from DID as the base
+    const { theme: generatedTheme } = generateThemeFromDid(did);
+
+    // Start with generated theme
+    let theme = { ...generatedTheme };
+
+    // Overlay custom style overrides from PDS if they exist
+    if (styleRecord) {
+      const styleConfig = styleRecord.value;
+
+      if (styleConfig.theme) {
+        // Merge custom theme overrides on top of generated theme
+        theme = {
+          ...theme,
+          colors: { ...theme.colors, ...styleConfig.theme.colors },
+          fonts: { ...theme.fonts, ...styleConfig.theme.fonts },
+          borderStyle: styleConfig.theme.borderStyle || theme.borderStyle,
+          borderWidth: styleConfig.theme.borderWidth || theme.borderWidth,
+          shadow: { ...theme.shadow, ...styleConfig.theme.shadow }
+        };
+      }
+
+
+    }
+
+    // Generate initial sections from DID as the base
+    let sections = generateInitialSections(did);
+
+    // Overlay custom sections from PDS if they exist
+    if (sectionsRecord) {
+      const sectionsConfig = sectionsRecord.value;
+      if (sectionsConfig.sections && sectionsConfig.sections.length > 0) {
+        sections = sectionsConfig.sections;
+      }
+    }
 
     currentConfig = {
       ...defaultConfig,
       ...config,
-      ...styleConfig,
-      ...sectionsConfig,
+      theme: {
+        ...theme,
+        preset: 'minimal' // Frontend-only preset for UI
+      },
+
+      sections,
     };
-    
-    // PDS only has colors, not presets - add frontend-only preset for UI
-    if (currentConfig.theme) {
-      if (!currentConfig.theme.preset) {
-        currentConfig.theme.preset = 'minimal';
-      }
-      if (!currentConfig.theme.colors) {
-        currentConfig.theme.colors = {};
-      }
-    }
 
     siteOwnerDid = did;
     return currentConfig;
@@ -300,6 +349,7 @@ export async function loadUserConfig(did) {
 
 /**
  * Check if user has an existing config record
+ * Note: Style and sections are now optional (generated client-side)
  */
 export async function hasUserConfig(did) {
   if (!did) {
@@ -307,12 +357,9 @@ export async function hasUserConfig(did) {
   }
 
   try {
-    const [configRecord, styleRecord, sectionsRecord] = await Promise.all([
-        getRecord(did, CONFIG_COLLECTION, CONFIG_RKEY),
-        getRecord(did, STYLE_COLLECTION, CONFIG_RKEY),
-        getRecord(did, SECTIONS_COLLECTION, CONFIG_RKEY)
-    ]);
-    return configRecord !== null && styleRecord !== null && sectionsRecord !== null;
+    // Only config record is required - style and sections are optional
+    const configRecord = await getRecord(did, CONFIG_COLLECTION, CONFIG_RKEY);
+    return configRecord !== null;
   } catch (error) {
     return false;
   }
@@ -367,77 +414,27 @@ export async function saveConfig({ isInitialOnboarding = false } = {}) {
     favicon: currentConfig.favicon,
   };
 
-  const styleToSave: any = {
-    $type: STYLE_COLLECTION,
-    theme: currentConfig.theme,
-    customCss: currentConfig.customCss,
-  };
+  // Styles and sections are generated client-side from DID
+  // No need to write them to PDS
 
-  const sectionsToSave: any = {
-    $type: SECTIONS_COLLECTION,
-    sections: currentConfig.sections,
-  };
-
-  if (!styleToSave.customCss || styleToSave.customCss.trim() === '') {
-    delete styleToSave.customCss;
-  }
-
-  if (styleToSave.theme) {
-    const themeToSave: any = {};
-    if (styleToSave.theme.colors && Object.keys(styleToSave.theme.colors).length > 0) {
-      themeToSave.colors = styleToSave.theme.colors;
-    }
-    if (styleToSave.theme.fonts && Object.keys(styleToSave.theme.fonts).length > 0) {
-        themeToSave.fonts = styleToSave.theme.fonts;
-    }
-    if (styleToSave.theme.borderStyle) {
-        themeToSave.borderStyle = styleToSave.theme.borderStyle;
-    }
-    if (styleToSave.theme.borderWidth) {
-        themeToSave.borderWidth = styleToSave.theme.borderWidth;
-    }
-    if (Object.keys(themeToSave).length > 0) {
-      styleToSave.theme = themeToSave;
-    } else {
-      delete styleToSave.theme;
-    }
-  }
-
-  const promises = [
-    putRecord(CONFIG_COLLECTION, CONFIG_RKEY, configToSave),
-    putRecord(STYLE_COLLECTION, CONFIG_RKEY, styleToSave)
+  // Only write config record - styles and sections are client-side generated
+  const promises: Promise<any>[] = [
+    putRecord(CONFIG_COLLECTION, CONFIG_RKEY, configToSave)
   ];
 
+  // On first config, create special spore if lucky
   if (isFirstTimeConfig) {
-    // Generate initial sections based on DID if sections are empty
-    if (!currentConfig.sections || currentConfig.sections.length === 0) {
-      const generatedSections = generateInitialSections(did);
-      currentConfig.sections = generatedSections;
-      sectionsToSave.sections = generatedSections;
-    }
-    
-    if (sectionsToSave.sections && sectionsToSave.sections.length > 0) {
-        promises.push(putRecord(SECTIONS_COLLECTION, CONFIG_RKEY, sectionsToSave));
-    }
-    
-    // Use seeded random for special spore (deterministic based on DID)
     const rng = seededRandom(did);
     // 1 in 10 chance to get a special spore
     if (rng() < 0.1) {
-        promises.push(putRecord(SPECIAL_SPORE_COLLECTION, CONFIG_RKEY, {
-            $type: SPECIAL_SPORE_COLLECTION,
-            subject: did, // Subject for backlink indexing (origin garden)
-            ownerDid: did,
-            originGardenDid: did, // Origin garden is where the spore is created
-            lastCapturedAt: new Date().toISOString(),
-            history: [{ did: did, timestamp: new Date().toISOString() }]
-        }));
-    }
-  } else {
-    if (sectionsToSave.sections && sectionsToSave.sections.length > 0) {
-        promises.push(putRecord(SECTIONS_COLLECTION, CONFIG_RKEY, sectionsToSave));
-    } else {
-        promises.push(deleteRecord(SECTIONS_COLLECTION, CONFIG_RKEY));
+      promises.push(putRecord(SPECIAL_SPORE_COLLECTION, CONFIG_RKEY, {
+        $type: SPECIAL_SPORE_COLLECTION,
+        subject: did, // Subject for backlink indexing (origin garden)
+        ownerDid: did,
+        originGardenDid: did, // Origin garden is where the spore is created
+        lastCapturedAt: new Date().toISOString(),
+        history: [{ did: did, timestamp: new Date().toISOString() }]
+      }));
     }
   }
 
@@ -490,11 +487,11 @@ export function reorderSections(orderedIds) {
 export function moveSectionUp(sectionId) {
   const sections = currentConfig.sections || [];
   const index = sections.findIndex(s => s.id === sectionId);
-  
+
   if (index <= 0) {
     return false;
   }
-  
+
   [sections[index - 1], sections[index]] = [sections[index], sections[index - 1]];
   return true;
 }
@@ -505,11 +502,11 @@ export function moveSectionUp(sectionId) {
 export function moveSectionDown(sectionId) {
   const sections = currentConfig.sections || [];
   const index = sections.findIndex(s => s.id === sectionId);
-  
+
   if (index < 0 || index >= sections.length - 1) {
     return false;
   }
-  
+
   [sections[index], sections[index + 1]] = [sections[index + 1], sections[index]];
   return true;
 }
@@ -521,7 +518,7 @@ export function updateTheme(themeUpdates) {
   if (!currentConfig.theme) {
     currentConfig.theme = { preset: 'minimal', colors: {}, fonts: {}, borderStyle: 'solid' };
   }
-  
+
   currentConfig.theme = {
     ...currentConfig.theme,
     ...themeUpdates
@@ -529,9 +526,4 @@ export function updateTheme(themeUpdates) {
   return currentConfig.theme;
 }
 
-/**
- * Set custom CSS
- */
-export function setCustomCss(css) {
-  currentConfig.customCss = css;
-}
+

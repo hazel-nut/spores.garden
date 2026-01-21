@@ -1,6 +1,6 @@
 import { listRecords, getBacklinks, getRecord } from '../at-client';
 import { getCurrentDid, isLoggedIn, createRecord } from '../oauth';
-import { getSiteOwnerDid } from '../config';
+import { getSiteOwnerDid, isValidSpore } from '../config';
 
 const SPECIAL_SPORE_COLLECTION = 'garden.spores.item.specialSpore';
 
@@ -15,10 +15,10 @@ async function findAllSporeRecords(originGardenDid: string) {
       `${SPECIAL_SPORE_COLLECTION}:subject`,
       { limit: 100 }
     );
-    
+
     // Backlinks return records array with { did, collection, rkey }
     const backlinks = backlinksResponse.records || backlinksResponse.links || [];
-    
+
     // Fetch full records for each backlink
     const recordPromises = backlinks.map(async (backlink) => {
       try {
@@ -34,18 +34,31 @@ async function findAllSporeRecords(originGardenDid: string) {
         return null;
       }
     });
-    
+
     const records = await Promise.all(recordPromises);
     const validRecords = records.filter(r => r !== null && r.value);
-    
+
+    // SECURITY: Validate spores to prevent adversarial actors from creating fake spores
+    // Only display spores from origins that should have received them (10% chance)
+    const authenticSpores = validRecords.filter(record => {
+      const originDid = record.value.originGardenDid || record.value.subject;
+      const isAuthentic = isValidSpore(originDid);
+
+      if (!isAuthentic) {
+        console.warn(`Ignoring invalid spore from ${originDid} - origin DID should not have received a spore`);
+      }
+
+      return isAuthentic;
+    });
+
     // Sort by lastCapturedAt timestamp (most recent first)
-    validRecords.sort((a, b) => {
+    authenticSpores.sort((a, b) => {
       const timeA = new Date(a.value.lastCapturedAt || 0).getTime();
       const timeB = new Date(b.value.lastCapturedAt || 0).getTime();
       return timeB - timeA; // Descending order
     });
-    
-    return validRecords;
+
+    return authenticSpores;
   } catch (error) {
     console.error('Failed to find spore records:', error);
     return [];
@@ -77,7 +90,7 @@ export async function renderSpecialSporeDisplay(section) {
     // Most recent record is the current holder
     const currentSporeRecord = allSporeRecords[0];
     const sporeOwnerDid = currentSporeRecord.value.ownerDid;
-    
+
     const sporeEl = document.createElement('div');
     sporeEl.className = 'spore-item';
 
@@ -115,7 +128,7 @@ export async function renderSpecialSporeDisplay(section) {
           }
         });
         sporeEl.appendChild(stealBtn);
-        
+
         const helpText = document.createElement('p');
         helpText.className = 'spore-help-text';
         helpText.style.fontSize = '0.9em';
@@ -142,7 +155,7 @@ export async function renderSpecialSporeDisplay(section) {
       ownerText.textContent = 'You currently own this special spore!';
       sporeEl.appendChild(ownerText);
     }
-    
+
     el.appendChild(sporeEl);
 
     // Display chronological lineage
@@ -219,7 +232,7 @@ export async function renderSpecialSporeDisplay(section) {
  */
 async function checkHasPlantedFlower(ownerDid: string, currentDid: string | null): Promise<boolean> {
   if (!currentDid) return false;
-  
+
   try {
     const response = await getBacklinks(ownerDid, 'garden.spores.social.flower:subject', { limit: 100 });
     const plantedFlowers = response.records || response.links || [];
@@ -235,7 +248,7 @@ async function checkHasPlantedFlower(ownerDid: string, currentDid: string | null
  */
 async function checkHasTakenSeed(currentDid: string | null, ownerDid: string): Promise<boolean> {
   if (!currentDid) return false;
-  
+
   try {
     const response = await listRecords(currentDid, 'garden.spores.social.takenFlower', { limit: 100 });
     const takenFlowers = response.records || [];
@@ -247,37 +260,37 @@ async function checkHasTakenSeed(currentDid: string | null, ownerDid: string): P
 }
 
 async function stealSpore(sporeRecord: any, newOwnerDid: string, gardenOwnerDid: string) {
-    const oldOwnerDid = sporeRecord.value.ownerDid;
-    const originGardenDid = sporeRecord.value.originGardenDid || sporeRecord.value.subject;
+  const oldOwnerDid = sporeRecord.value.ownerDid;
+  const originGardenDid = sporeRecord.value.originGardenDid || sporeRecord.value.subject;
 
-    // Never delete old records - create new record only
-    // 1. Create new spore record in new owner's PDS
-    try {
-        await createRecord('garden.spores.item.specialSpore', {
-            $type: SPECIAL_SPORE_COLLECTION,
-            subject: originGardenDid, // Preserve origin for backlink indexing
-            ownerDid: newOwnerDid,
-            originGardenDid: originGardenDid, // Preserve origin (never change)
-            lastCapturedAt: new Date().toISOString(),
-            history: [...(sporeRecord.value.history || []), { did: newOwnerDid, timestamp: new Date().toISOString() }]
-        });
-    } catch (error) {
-        console.error('Failed to create spore for new owner:', error);
-        throw new Error('Failed to create spore for new owner.');
-    }
+  // Never delete old records - create new record only
+  // 1. Create new spore record in new owner's PDS
+  try {
+    await createRecord('garden.spores.item.specialSpore', {
+      $type: SPECIAL_SPORE_COLLECTION,
+      subject: originGardenDid, // Preserve origin for backlink indexing
+      ownerDid: newOwnerDid,
+      originGardenDid: originGardenDid, // Preserve origin (never change)
+      lastCapturedAt: new Date().toISOString(),
+      history: [...(sporeRecord.value.history || []), { did: newOwnerDid, timestamp: new Date().toISOString() }]
+    });
+  } catch (error) {
+    console.error('Failed to create spore for new owner:', error);
+    throw new Error('Failed to create spore for new owner.');
+  }
 
-    // 2. Trade mechanic: Plant a flower in the garden as part of the trade
-    try {
-        await createRecord('garden.spores.social.flower', {
-            subject: gardenOwnerDid,
-            createdAt: new Date().toISOString()
-        });
-    } catch (error) {
-        console.error('Failed to plant flower as trade:', error);
-        // Don't throw here - spore steal was successful, flower planting is a bonus
-        // Just log the error
-    }
-    
-    alert(`You successfully stole the special spore from ${oldOwnerDid}! It is now yours. A flower has been planted in this garden as part of the trade.`);
+  // 2. Trade mechanic: Plant a flower in the garden as part of the trade
+  try {
+    await createRecord('garden.spores.social.flower', {
+      subject: gardenOwnerDid,
+      createdAt: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Failed to plant flower as trade:', error);
+    // Don't throw here - spore steal was successful, flower planting is a bonus
+    // Just log the error
+  }
+
+  alert(`You successfully stole the special spore from ${oldOwnerDid}! It is now yours. A flower has been planted in this garden as part of the trade.`);
 }
 

@@ -6,10 +6,9 @@
  * - Subtitle (h2)
  * - Theme preset
  * - Theme colors
- * - Custom CSS
  */
 
-import { getConfig, updateConfig, updateTheme, setCustomCss } from '../config';
+import { getConfig, updateConfig, updateTheme } from '../config';
 import { getThemePresets, getThemePreset, getPresetColors, generateThemeFromDid } from '../themes/engine';
 import { applyTheme } from '../themes/engine';
 import { getCurrentDid } from '../oauth';
@@ -27,17 +26,17 @@ class SiteConfig extends HTMLElement {
     const config = getConfig();
     const theme = config.theme || { preset: 'minimal' };
     const presets = getThemePresets();
-    
+
     // Get preset defaults for the current preset
     const presetTheme = getThemePreset(theme.preset) || getThemePreset('minimal');
     const presetColors = presetTheme?.colors || {};
-    
+
     // Helper to get effective color value (custom override or preset default)
     // This is what the color picker should show
     const getEffectiveColor = (colorName: string) => {
       return theme.colors?.[colorName] || presetColors[colorName] || '#000000';
     };
-    
+
     // Helper to get display value for text input (empty if using preset default)
     const getDisplayColor = (colorName: string) => {
       return theme.colors?.[colorName] || '';
@@ -83,15 +82,7 @@ class SiteConfig extends HTMLElement {
             >${(config.description || '').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</textarea>
           </div>
 
-          <div class="site-config-section">
-            <label class="label">Custom CSS</label>
-            <textarea 
-              class="input textarea" 
-              id="config-custom-css" 
-              placeholder="/* Custom CSS styles */"
-              rows="6"
-            >${(config.customCss || '').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</textarea>
-          </div>
+
         </div>
       </div>
     `;
@@ -131,11 +122,7 @@ class SiteConfig extends HTMLElement {
       updateConfig({ description: value });
     });
 
-    // Custom CSS
-    const cssTextarea = this.querySelector('#config-custom-css');
-    cssTextarea.addEventListener('input', (e) => {
-      setCustomCss(e.target.value);
-    });
+
   }
 }
 

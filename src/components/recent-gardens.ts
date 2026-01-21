@@ -93,7 +93,7 @@ class MockRecentGardensAPI implements RecentGardensAPI {
   async getRecentGardens(limit: number = 12, offset: number = 0): Promise<GardenMetadata[]> {
     // Simulate network delay
     await new Promise(resolve => setTimeout(resolve, 300));
-    
+
     // Return paginated results
     return this.mockGardens
       .slice(offset, offset + limit)
@@ -134,7 +134,7 @@ class ConstellationRecentGardensAPI implements RecentGardensAPI {
 
       // Discover gardens from flower interactions
       const flowerBacklinks = await this.discoverGardensFromFlowers(limit * 2);
-      
+
       // Discover gardens from config updates
       const configBacklinks = await this.discoverGardensFromConfigs(limit * 2);
 
@@ -172,7 +172,7 @@ class ConstellationRecentGardensAPI implements RecentGardensAPI {
   private async discoverGardensFromFlowers(limit: number): Promise<GardenMetadata[]> {
     const gardens: GardenMetadata[] = [];
     const discoveredDids = new Set<string>();
-    
+
     try {
       // Query flower records from known gardens to find who they've planted flowers for
       for (const gardenDid of this.knownGardenDids.slice(0, 10)) {
@@ -185,14 +185,14 @@ class ConstellationRecentGardensAPI implements RecentGardensAPI {
             { limit: 20 },
             null
           );
-          
+
           if (flowerRecords?.records) {
             for (const record of flowerRecords.records) {
               // The subject field in flower records points to the garden DID that received the flower
               const subjectDid = record.value?.subject;
               if (subjectDid && !discoveredDids.has(subjectDid) && subjectDid !== gardenDid) {
                 discoveredDids.add(subjectDid);
-                
+
                 try {
                   // Check if this DID has a garden config
                   const configRecord = await getRecord(
@@ -201,7 +201,7 @@ class ConstellationRecentGardensAPI implements RecentGardensAPI {
                     'self',
                     { useSlingshot: true }
                   );
-                  
+
                   if (configRecord?.value) {
                     const createdAt = record.value?.createdAt || record.value?.indexedAt;
                     gardens.push({
@@ -209,7 +209,7 @@ class ConstellationRecentGardensAPI implements RecentGardensAPI {
                       lastUpdated: createdAt ? new Date(createdAt) : new Date(),
                       updateType: 'flower-plant'
                     });
-                    
+
                     // Limit discoveries
                     if (gardens.length >= limit) break;
                   }
@@ -224,13 +224,13 @@ class ConstellationRecentGardensAPI implements RecentGardensAPI {
           // Continue with next garden
           continue;
         }
-        
+
         if (gardens.length >= limit) break;
       }
     } catch (error) {
       console.warn('Error discovering gardens from flowers:', error);
     }
-    
+
     return gardens;
   }
 
@@ -240,7 +240,7 @@ class ConstellationRecentGardensAPI implements RecentGardensAPI {
    */
   private async discoverGardensFromConfigs(limit: number): Promise<GardenMetadata[]> {
     const gardens: GardenMetadata[] = [];
-    
+
     // Check known gardens for recent config updates
     for (const gardenDid of this.knownGardenDids.slice(0, limit * 2)) {
       try {
@@ -250,7 +250,7 @@ class ConstellationRecentGardensAPI implements RecentGardensAPI {
           'self',
           { useSlingshot: true }
         );
-        
+
         if (configRecord?.value) {
           const updatedAt = configRecord.value.updatedAt || configRecord.value.createdAt;
           // Use the timestamp if available, otherwise use current time
@@ -271,7 +271,7 @@ class ConstellationRecentGardensAPI implements RecentGardensAPI {
         continue;
       }
     }
-    
+
     return gardens;
   }
 
@@ -378,13 +378,13 @@ class RecentGardens extends HTMLElement {
     try {
       // Seed some initial known gardens if none exist (for discovery bootstrapping)
       this.seedInitialGardens();
-      
+
       const limit = parseInt(this.getAttribute('data-limit') || '12', 10);
       this.gardens = await this.api.getRecentGardens(limit);
-      
+
       // Enrich garden data with profile information
       await this.enrichGardens();
-      
+
     } catch (error) {
       console.error('Failed to load recent gardens:', error);
       this.gardens = [];
@@ -402,19 +402,19 @@ class RecentGardens extends HTMLElement {
     try {
       const stored = localStorage.getItem('spores.garden.knownGardens');
       const knownGardens: string[] = stored ? JSON.parse(stored) : [];
-      
+
       // Seed gardens if list is empty or very small
       if (knownGardens.length < 3) {
         const seedGardens = [
           'did:plc:y3lae7hmqiwyq7w2v3bcb2c2', // charlebois.info
         ];
-        
+
         for (const did of seedGardens) {
           if (!knownGardens.includes(did)) {
             knownGardens.push(did);
           }
         }
-        
+
         localStorage.setItem('spores.garden.knownGardens', JSON.stringify(knownGardens));
       }
     } catch (error) {
@@ -431,7 +431,7 @@ class RecentGardens extends HTMLElement {
         const profile = await getProfile(garden.did);
         garden.handle = profile.handle;
         garden.title = garden.title || profile.displayName || profile.handle;
-        
+
         // If no subtitle is set, use handle
         if (!garden.subtitle && profile.handle) {
           garden.subtitle = `@${profile.handle}`;
@@ -458,7 +458,7 @@ class RecentGardens extends HTMLElement {
     if (diffMins < 60) return `${diffMins} minute${diffMins !== 1 ? 's' : ''} ago`;
     if (diffHours < 24) return `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`;
     if (diffDays < 7) return `${diffDays} day${diffDays !== 1 ? 's' : ''} ago`;
-    
+
     return date.toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
@@ -481,14 +481,11 @@ class RecentGardens extends HTMLElement {
 
   private render() {
     const showEmpty = this.getAttribute('data-show-empty') === 'true';
-    
+
     if (this.loading) {
       this.innerHTML = `
         <section class="recent-gardens">
-          <h2 class="recent-gardens-title">Recent Gardens</h2>
-          <div class="recent-gardens-loading">
-            <p>Loading gardens...</p>
-          </div>
+          <h2 class="recent-gardens-title">Loading Gardens</h2>
         </section>
       `;
       return;
@@ -512,31 +509,31 @@ class RecentGardens extends HTMLElement {
     }
 
     const gardensHTML = this.gardens.map(garden => {
-      const gardenUrl = garden.handle 
-        ? `/@${garden.handle}` 
+      const gardenUrl = garden.handle
+        ? `/@${garden.handle}`
         : `/@${garden.did}`;
-      
+
       const updateIcon = this.getUpdateTypeIcon(garden.updateType);
       const relativeTime = this.formatRelativeTime(garden.lastUpdated);
 
       // Generate unique theme styles from the garden's DID
       const { theme } = generateThemeFromDid(garden.did);
       const { colors, borderStyle, borderWidth, shadow } = theme;
-      
+
       // Build inline styles for unique garden appearance
-      const shadowValue = shadow.type === 'inset' 
+      const shadowValue = shadow.type === 'inset'
         ? `inset ${shadow.x} ${shadow.y} ${shadow.blur} ${shadow.spread} ${shadow.color}`
         : `${shadow.x} ${shadow.y} ${shadow.blur} ${shadow.spread} ${shadow.color}`;
-      
+
       const rowStyle = `
         background: ${colors.background};
         border: ${borderWidth} ${borderStyle} ${colors.border};
       `.trim().replace(/\s+/g, ' ');
-      
+
       const linkStyle = `
         color: ${colors.text};
       `.trim().replace(/\s+/g, ' ');
-      
+
       const hoverShadow = shadowValue;
 
       return `
@@ -581,14 +578,14 @@ class RecentGardens extends HTMLElement {
     rows.forEach(row => {
       const el = row as HTMLElement;
       const shadow = el.dataset.shadow;
-      
+
       el.addEventListener('mouseenter', () => {
         if (shadow) {
           el.style.boxShadow = shadow;
           el.style.transform = 'translateY(-2px)';
         }
       });
-      
+
       el.addEventListener('mouseleave', () => {
         el.style.boxShadow = 'none';
         el.style.transform = 'none';

@@ -60,8 +60,9 @@ class SectionBlock extends HTMLElement {
        this.section.records.some(uri => uri.includes('app.bsky.feed.post')));
     
     // Section header (title + edit controls)
-    // Hide title in view mode for Bluesky posts, but always show in edit mode
-    const shouldShowTitle = this.section.title && (this.editMode || !isBlueskyPostSection);
+    // Hide title in view mode for Bluesky posts or if hideHeader is set, but always show in edit mode
+    const shouldShowTitle = this.section.title &&
+      (this.editMode || (!isBlueskyPostSection && !this.section.hideHeader));
     if (shouldShowTitle || this.editMode) {
       const header = document.createElement('div');
       header.className = 'section-header';
@@ -193,6 +194,21 @@ class SectionBlock extends HTMLElement {
     moveButtons.appendChild(moveDownBtn);
 
     controls.appendChild(moveButtons);
+
+    // Hide/Show Header toggle button (only if section has a title)
+    if (this.section.title) {
+      const toggleHeaderBtn = document.createElement('button');
+      toggleHeaderBtn.className = 'button button-secondary button-small';
+      toggleHeaderBtn.textContent = this.section.hideHeader ? 'Show Header' : 'Hide Header';
+      toggleHeaderBtn.title = this.section.hideHeader
+        ? 'Show header in preview mode'
+        : 'Hide header in preview mode';
+      toggleHeaderBtn.addEventListener('click', () => {
+        updateSection(this.section.id, { hideHeader: !this.section.hideHeader });
+        window.dispatchEvent(new CustomEvent('config-updated'));
+      });
+      controls.appendChild(toggleHeaderBtn);
+    }
 
     // Edit button only for section types that support editing
     const supportsEditing = 

@@ -31,9 +31,24 @@ Your content stays in your PDS. The website is just a view.
 
 ## Lexicons
 
-- `garden.spores.site.config` - Site configuration
-- `garden.spores.site.content` - Custom content blocks
-- `garden.spores.item.specialSpore` - Special spore items (capture-the-flag mechanic)
+**Required Records:**
+- `garden.spores.site.config` - Site configuration (title, subtitle, description, favicon)
+
+**Never Written to PDS (Client-Side Only):**
+- Themes - Generated deterministically from DID via `generateThemeFromDid()`
+- Sections - Generated deterministically from DID via `generateInitialSections()`
+
+**User Content:**
+- `garden.spores.site.content` - Custom content blocks (user-authored, written to PDS)
+
+**Social/Interactive:**
+- `garden.spores.item.specialSpore` - Special spore items (capture-the-flag mechanic, written to PDS)
+
+**Architecture Philosophy:** 
+- **Generative content** (themes, sections) is computed from the DID on every load - never stored on PDS
+- **User-authored content** (custom blocks) is stored on PDS - it's unique data the user created
+- **Social objects** (spores) are stored on PDS - they need to be transferred between users
+- This reduces PDS storage, improves iteration speed, and minimizes attack surface
 
 ## Architecture
 
@@ -71,6 +86,17 @@ Special spores are rare, gamified items that implement a capture-the-flag mechan
 - **Capture Mechanics**: Users can steal spores from gardens (with restrictions)
 - **Backlink-Based**: All spore records reference the origin garden via backlinks, enabling full lineage tracking
 - **Evolution**: Complete history of all captures is preserved and displayed chronologically
+
+### Spore Validation
+
+To prevent adversarial actors from creating fake spores, the app validates spores client-side:
+
+- **Deterministic Verification**: Uses `isValidSpore(originGardenDid)` to check if a spore should exist
+- **Same Algorithm**: Uses the same `seededRandom()` logic as spore creation (10% chance)
+- **Client-Side Filtering**: Invalid spores are ignored by the app, even if they exist on PDS
+- **Attack Prevention**: Adversarial actors can create fake spore records, but the app won't render them
+
+This maintains spore rarity without requiring centralized validation or trusted authorities.
 
 See [Special Spore Documentation](docs/special-spore.md) for detailed implementation and mechanics.
 
