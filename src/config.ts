@@ -1,6 +1,7 @@
 import { getRecord, resolveHandle } from './at-client';
 import { putRecord, getCurrentDid, isLoggedIn, deleteRecord } from './oauth';
 import { getThemePreset, generateThemeFromDid } from './themes/engine';
+import { registerGarden } from './components/recent-gardens';
 
 const CONFIG_COLLECTION = 'garden.spores.site.config';
 const STYLE_COLLECTION = 'garden.spores.site.style';
@@ -10,6 +11,103 @@ const CONFIG_RKEY = 'self';
 
 let currentConfig = null;
 let siteOwnerDid = null;
+
+export type UrlIdentifier =
+  | { type: 'did'; value: string }
+  | { type: 'handle'; value: string };
+
+/**
+ * Seed-based random number generator
+ * Creates a deterministic PRNG from a seed string (e.g., DID)
+ */
+function seededRandom(seed: string): () => number {
+  // Hash the seed string to get initial state
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) {
+    hash = ((hash << 5) - hash) + seed.charCodeAt(i);
+    hash = hash & hash; // Convert to 32bit integer
+  }
+  let state = Math.abs(hash);
+  
+  // Linear Congruential Generator
+  return function() {
+    state = (state * 1103515245 + 12345) & 0x7fffffff;
+    return state / 0x7fffffff;
+  };
+}
+
+/**
+ * Generate initial sections for a new user based on their DID
+ * Uses seed-based randomness for deterministic generation
+ */
+function generateInitialSections(did: string): any[] {
+  const rng = seededRandom(did);
+  const sections: any[] = [];
+  let sectionId = 0;
+
+  // Always include these sections (100%)
+  sections.push({
+    id: `section-${sectionId++}`,
+    type: 'profile',
+    layout: 'profile'
+  });
+
+  sections.push({
+    id: `section-${sectionId++}`,
+    type: 'flower-bed',
+    layout: 'flower-bed',
+    title: 'Flower Bed'
+  });
+
+  sections.push({
+    id: `section-${sectionId++}`,
+    type: 'collected-flowers',
+    layout: 'collected-flowers',
+    title: 'Collected Flowers'
+  });
+
+  sections.push({
+    id: `section-${sectionId++}`,
+    type: 'share-to-bluesky',
+    title: 'Share to Bluesky'
+  });
+
+  // Randomly include optional sections (seed-based)
+  
+  // One Bluesky post section (70% chance)
+  if (rng() < 0.7) {
+    sections.push({
+      id: `section-${sectionId++}`,
+      type: 'records',
+      collection: 'app.bsky.feed.post',
+      layout: 'post',
+      title: 'My Bluesky Posts'
+    });
+  }
+
+  // One text/markdown content block (60% chance)
+  if (rng() < 0.6) {
+    sections.push({
+      id: `section-${sectionId++}`,
+      type: 'content',
+      collection: 'garden.spores.site.content',
+      format: 'markdown',
+      title: 'Welcome'
+    });
+  }
+
+  // One image section (40% chance)
+  if (rng() < 0.4) {
+    sections.push({
+      id: `section-${sectionId++}`,
+      type: 'records',
+      layout: 'image',
+      title: 'Images'
+    });
+  }
+
+  return sections;
+}
 
 /**
  * Default configuration for new sites
@@ -35,12 +133,12 @@ function getDefaultConfig() {
 
 /**
  * Parse identifier from URL (supports both path-based and query params)
- * Supports: /@handle, /@did, ?handle=..., ?did=...
+ * Supports: /@handle, /@did, /handle (legacy shorthand), ?handle=..., ?did=...
  */
-function parseIdentifierFromUrl() {
-  const pathMatch = location.pathname.match(/^\/@(.+)$/);
+export function parseIdentifierFromUrl(loc: Location = location): UrlIdentifier | null {
+  const pathMatch = loc.pathname.match(/^\/@(.+)$/);
   if (pathMatch) {
-    const identifier = pathMatch[1];
+    const identifier = decodeURIComponent(pathMatch[1]);
     if (identifier.startsWith('did:')) {
       return { type: 'did', value: identifier };
     } else {
@@ -48,7 +146,28 @@ function parseIdentifierFromUrl() {
     }
   }
 
-  const params = new URLSearchParams(location.search);
+  // Legacy/shorthand: support `/handle` style URLs (e.g. `/alice.example.com`).
+  // This prevents unknown single-segment paths from silently falling back to the
+  // logged-in user's garden.
+  const bareMatch = loc.pathname.match(/^\/([^/]+)$/);
+  if (bareMatch) {
+    const segment = decodeURIComponent(bareMatch[1]);
+
+    // Ignore obvious static files and known metadata endpoints.
+    const lower = segment.toLowerCase();
+    const isStaticFile = /\.(js|css|map|png|jpg|jpeg|gif|webp|svg|ico|json|txt|xml|webmanifest)$/.test(lower);
+    if (lower !== 'client-metadata.json' && !isStaticFile) {
+      if (segment.startsWith('did:')) {
+        return { type: 'did', value: segment };
+      }
+      // Only treat domain-like segments as handles to avoid catching random paths.
+      if (segment.includes('.')) {
+        return { type: 'handle', value: segment };
+      }
+    }
+  }
+
+  const params = new URLSearchParams(loc.search);
   const didParam = params.get('did');
   const handleParam = params.get('handle');
 
@@ -59,6 +178,10 @@ function parseIdentifierFromUrl() {
   }
 
   return null;
+}
+
+export function hasGardenIdentifierInUrl(loc: Location = location): boolean {
+  return parseIdentifierFromUrl(loc) !== null;
 }
 
 /**
@@ -223,6 +346,19 @@ export async function saveConfig({ isInitialOnboarding = false } = {}) {
     siteOwnerDid = did;
   }
 
+  // Check if this is truly the first time creating a config
+  // If isInitialOnboarding is false, verify by checking if config exists
+  let isFirstTimeConfig = isInitialOnboarding;
+  if (!isInitialOnboarding) {
+    try {
+      const existingConfig = await getRecord(did, CONFIG_COLLECTION, CONFIG_RKEY);
+      isFirstTimeConfig = !existingConfig;
+    } catch (error) {
+      // If getRecord fails (e.g., 404), treat as first time
+      isFirstTimeConfig = true;
+    }
+  }
+
   const configToSave: any = {
     $type: CONFIG_COLLECTION,
     title: currentConfig.title,
@@ -272,16 +408,27 @@ export async function saveConfig({ isInitialOnboarding = false } = {}) {
     putRecord(STYLE_COLLECTION, CONFIG_RKEY, styleToSave)
   ];
 
-  if (isInitialOnboarding) {
+  if (isFirstTimeConfig) {
+    // Generate initial sections based on DID if sections are empty
+    if (!currentConfig.sections || currentConfig.sections.length === 0) {
+      const generatedSections = generateInitialSections(did);
+      currentConfig.sections = generatedSections;
+      sectionsToSave.sections = generatedSections;
+    }
+    
     if (sectionsToSave.sections && sectionsToSave.sections.length > 0) {
         promises.push(putRecord(SECTIONS_COLLECTION, CONFIG_RKEY, sectionsToSave));
     }
     
+    // Use seeded random for special spore (deterministic based on DID)
+    const rng = seededRandom(did);
     // 1 in 10 chance to get a special spore
-    if (Math.random() < 0.1) {
+    if (rng() < 0.1) {
         promises.push(putRecord(SPECIAL_SPORE_COLLECTION, CONFIG_RKEY, {
             $type: SPECIAL_SPORE_COLLECTION,
+            subject: did, // Subject for backlink indexing (origin garden)
             ownerDid: did,
+            originGardenDid: did, // Origin garden is where the spore is created
             lastCapturedAt: new Date().toISOString(),
             history: [{ did: did, timestamp: new Date().toISOString() }]
         }));
@@ -295,6 +442,9 @@ export async function saveConfig({ isInitialOnboarding = false } = {}) {
   }
 
   await Promise.all(promises);
+
+  // Register this garden in the recent gardens discovery system
+  registerGarden(did);
 
   return currentConfig;
 }
