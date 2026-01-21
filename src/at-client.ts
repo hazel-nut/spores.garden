@@ -361,7 +361,7 @@ export async function describeRepo(did, agent = null) {
 }
 
 /**
- * Get backlinks from Constellation (for guestbook, etc.)
+ * Get backlinks from Constellation (for flower interactions, etc.)
  */
 export async function getBacklinks(subject, source, options = {}) {
   const { limit = 50, cursor } = options;
@@ -372,12 +372,24 @@ export async function getBacklinks(subject, source, options = {}) {
   url.searchParams.set('limit', limit.toString());
   if (cursor) url.searchParams.set('cursor', cursor);
 
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error(`Failed to get backlinks: ${response.status}`);
-  }
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => 'Unknown error');
+      throw new Error(
+        `Failed to get backlinks: ${response.status} ${response.statusText}. ${errorText}`
+      );
+    }
 
-  return response.json();
+    return response.json();
+  } catch (error) {
+    if (error instanceof TypeError && error.message.includes('fetch')) {
+      throw new Error(
+        `Network/CORS error: Unable to connect to ${ENDPOINTS.CONSTELLATION_URL}.`
+      );
+    }
+    throw error;
+  }
 }
 
 /**

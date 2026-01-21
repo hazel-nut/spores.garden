@@ -3,8 +3,9 @@
  * Loads config, initializes OAuth, renders sections, handles edit mode.
  */
 
-import { initConfig, getConfig, getSiteOwnerDid, isOwner, saveConfig, setSiteOwnerDid, loadUserConfig, hasUserConfig, updateTheme } from '../config';
+import { initConfig, getConfig, getSiteOwnerDid, isOwner, saveConfig, setSiteOwnerDid, loadUserConfig, hasUserConfig, updateTheme, hasGardenIdentifierInUrl } from '../config';
 import { initOAuth, isLoggedIn, getCurrentDid, login, logout, createRecord, uploadBlob, post } from '../oauth';
+import { getBacklinks, listRecords } from '../at-client';
 import { applyTheme, generateThemeFromDid } from '../themes/engine';
 import { escapeHtml } from '../utils/sanitize';
 import { generateSocialCardImage } from '../utils/social-card';
@@ -20,6 +21,22 @@ class SiteApp extends HTMLElement {
   constructor() {
     super();
     this.editMode = false;
+  }
+
+  private navigateToGardenIdentifier(rawInput: string) {
+    const input = rawInput.trim();
+    if (!input) return;
+
+    const withoutAt = input.startsWith('@') ? input.slice(1) : input;
+
+    // DID form: did:plc:...
+    if (withoutAt.startsWith('did:')) {
+      location.href = `/?did=${encodeURIComponent(withoutAt)}`;
+      return;
+    }
+
+    // Handle form: example.bsky.social
+    location.href = `/?handle=${encodeURIComponent(withoutAt)}`;
   }
 
   async connectedCallback() {
@@ -98,6 +115,11 @@ class SiteApp extends HTMLElement {
         this.render();
       });
 
+      // Listen for share to Bluesky requests from sections
+      window.addEventListener('share-to-bluesky', () => {
+        this.shareToBluesky();
+      });
+
       // Listen for open config modal requests
       window.addEventListener('open-config-modal', () => {
         this.showConfigModal();
@@ -147,12 +169,18 @@ class SiteApp extends HTMLElement {
     const config = getConfig();
     const ownerDid = getSiteOwnerDid();
     const isOwnerLoggedIn = isOwner();
+    const isHomePage = !this.isViewingProfile();
+
+    // On home page, always show default title/subtitle regardless of login state
+    const displayTitle = isHomePage ? 'spores.garden' : (config.title || 'spores.garden');
+    const displaySubtitle = isHomePage ? 'A personal ATProto website' : (config.subtitle || 'A personal ATProto website');
+    const displayDescription = isHomePage ? 'A personal ATProto website' : (config.description || 'A personal ATProto website');
 
     // Update title and meta description
-    document.title = config.title || 'spores.garden';
+    document.title = displayTitle;
     const metaDescription = document.querySelector('#meta-description') as HTMLMetaElement;
     if (metaDescription) {
-      metaDescription.content = config.description || 'A personal ATProto website';
+      metaDescription.content = displayDescription;
     }
 
     this.innerHTML = '';
@@ -168,13 +196,13 @@ class SiteApp extends HTMLElement {
 
     const title = document.createElement('h1');
     title.className = 'site-title';
-    title.textContent = config.title || 'spores.garden';
+    title.textContent = displayTitle;
     titleContainer.appendChild(title);
 
     // Add subtitle as h2
     const subtitle = document.createElement('h2');
     subtitle.className = 'site-subtitle';
-    subtitle.textContent = config.subtitle || 'A personal ATProto website';
+    subtitle.textContent = displaySubtitle;
     titleContainer.appendChild(subtitle);
 
     header.appendChild(titleContainer);
@@ -187,8 +215,8 @@ class SiteApp extends HTMLElement {
     const isViewingProfile = this.isViewingProfile();
 
     if (isLoggedIn()) {
-      if (isOwnerLoggedIn) {
-        // Garden configuration button
+      if (isOwnerLoggedIn && !isHomePage) {
+        // Garden configuration button (only on profile pages, not home)
         const configBtn = document.createElement('button');
         configBtn.className = 'button button-secondary';
         configBtn.textContent = 'Config';
@@ -212,21 +240,69 @@ class SiteApp extends HTMLElement {
         shareBtn.setAttribute('aria-label', 'Share your garden to Bluesky');
         shareBtn.addEventListener('click', () => this.shareToBluesky());
         controls.appendChild(shareBtn);
+      } else if (isHomePage) {
+        // On home page when logged in, show "View My Garden" button
+        const currentDid = getCurrentDid();
+        if (currentDid) {
+          const viewMyGardenBtn = document.createElement('button');
+          viewMyGardenBtn.className = 'button button-primary';
+          viewMyGardenBtn.textContent = 'View My Garden';
+          viewMyGardenBtn.setAttribute('aria-label', 'Go to your garden');
+          viewMyGardenBtn.addEventListener('click', () => {
+            location.href = `/@${currentDid}`;
+          });
+          controls.appendChild(viewMyGardenBtn);
+        }
       } else if (!isOwnerLoggedIn && isViewingProfile) {
-        // "Plant your flower" button for visitors
+        // Check if user already interacted with this garden
+        const currentDid = getCurrentDid();
+        const [hasPlantedFlower, hasTakenSeed] = await Promise.all([
+          this.checkHasPlantedFlower(ownerDid, currentDid),
+          this.checkHasTakenSeed(currentDid, ownerDid)
+        ]);
+
+        // "View My Garden" button for visitors
+        if (currentDid) {
+          const viewMyGardenBtn = document.createElement('button');
+          viewMyGardenBtn.className = 'button button-secondary';
+          viewMyGardenBtn.textContent = 'My Garden';
+          viewMyGardenBtn.setAttribute('aria-label', 'Go to your garden');
+          viewMyGardenBtn.addEventListener('click', () => {
+            location.href = `/@${currentDid}`;
+          });
+          controls.appendChild(viewMyGardenBtn);
+        }
+
+        // "Plant a flower" button for visitors
         const plantFlowerBtn = document.createElement('button');
         plantFlowerBtn.className = 'button button-primary';
-        plantFlowerBtn.textContent = 'Plant your flower';
-        plantFlowerBtn.setAttribute('aria-label', 'Plant your flower in this garden');
-        plantFlowerBtn.addEventListener('click', () => this.plantFlower());
+        if (hasPlantedFlower) {
+          plantFlowerBtn.textContent = 'Already planted';
+          plantFlowerBtn.disabled = true;
+          plantFlowerBtn.setAttribute('aria-label', 'You have already planted a flower in this garden');
+          plantFlowerBtn.title = 'You have already planted a flower in this garden';
+        } else {
+          plantFlowerBtn.textContent = 'Plant a flower';
+          plantFlowerBtn.setAttribute('aria-label', 'Plant a flower in this garden - Leave your unique flower as a way to show appreciation');
+          plantFlowerBtn.title = 'Leave your unique flower in this garden as a way to show appreciation';
+          plantFlowerBtn.addEventListener('click', () => this.plantFlower());
+        }
         controls.appendChild(plantFlowerBtn);
 
-        // "Take this flower" button for visitors
+        // "Take a seed" button for visitors
         const takeFlowerBtn = document.createElement('button');
         takeFlowerBtn.className = 'button button-secondary';
-        takeFlowerBtn.textContent = 'Take this flower';
-        takeFlowerBtn.setAttribute('aria-label', 'Take this flower to your garden');
-        takeFlowerBtn.addEventListener('click', () => this.takeFlower());
+        if (hasTakenSeed) {
+          takeFlowerBtn.textContent = 'Already collected';
+          takeFlowerBtn.disabled = true;
+          takeFlowerBtn.setAttribute('aria-label', 'You have already collected a seed from this garden');
+          takeFlowerBtn.title = 'You have already collected a seed from this garden';
+        } else {
+          takeFlowerBtn.textContent = 'Take a seed';
+          takeFlowerBtn.setAttribute('aria-label', 'Take a seed from this garden to plant in your own');
+          takeFlowerBtn.title = 'Collect a seed from this garden to plant in your own';
+          takeFlowerBtn.addEventListener('click', () => this.takeFlower());
+        }
         controls.appendChild(takeFlowerBtn);
       }
 
@@ -241,15 +317,16 @@ class SiteApp extends HTMLElement {
       });
       controls.appendChild(logoutBtn);
     } else {
-      // Login button - only show if not viewing a profile
-      if (!isViewingProfile) {
-        const loginBtn = document.createElement('button');
-        loginBtn.className = 'button';
-        loginBtn.textContent = 'Login';
-        loginBtn.setAttribute('aria-label', 'Log in with AT Protocol');
-        loginBtn.addEventListener('click', () => this.showLoginModal());
-        controls.appendChild(loginBtn);
-      }
+      // Login button (top-right). Show when logged out, including when viewing someone else's garden.
+      const loginBtn = document.createElement('button');
+      loginBtn.className = 'button';
+      loginBtn.textContent = 'Login';
+      loginBtn.setAttribute(
+        'aria-label',
+        isViewingProfile ? 'Log in to interact with this garden' : 'Log in with AT Protocol'
+      );
+      loginBtn.addEventListener('click', () => this.showLoginModal());
+      controls.appendChild(loginBtn);
     }
 
     header.appendChild(controls);
@@ -259,10 +336,58 @@ class SiteApp extends HTMLElement {
     const main = document.createElement('main');
     main.className = 'main';
 
-    // Render sections
+    // Render sections - but NOT on home page (home page only shows recent gardens)
     const sections = config.sections || [];
 
-    if (sections.length === 0 && !this.editMode) {
+    if (isHomePage) {
+      // Home page: show homepage view with login option and recent gardens
+      const homepageView = document.createElement('div');
+      homepageView.className = 'homepage-view';
+
+      if (!isLoggedIn()) {
+        const heading = document.createElement('h2');
+        heading.style.textAlign = 'center';
+        heading.textContent = 'Login to start gardening!';
+        homepageView.appendChild(heading);
+        
+        const loginBtn = document.createElement('button');
+        loginBtn.className = 'button';
+        loginBtn.style.marginTop = 'var(--spacing-md)';
+        loginBtn.textContent = 'Login';
+        loginBtn.addEventListener('click', () => this.showLoginModal());
+        homepageView.appendChild(loginBtn);
+      } else {
+        // Logged in: show "View My Garden" button
+        const currentDid = getCurrentDid();
+        if (currentDid) {
+          const heading = document.createElement('h2');
+          heading.style.textAlign = 'center';
+          heading.textContent = 'Welcome back!';
+          homepageView.appendChild(heading);
+
+          const viewMyGardenBtn = document.createElement('button');
+          viewMyGardenBtn.className = 'button button-primary';
+          viewMyGardenBtn.style.marginTop = 'var(--spacing-md)';
+          viewMyGardenBtn.textContent = 'View My Garden';
+          viewMyGardenBtn.setAttribute('aria-label', 'Go to your garden');
+          viewMyGardenBtn.addEventListener('click', () => {
+            location.href = `/@${currentDid}`;
+          });
+          homepageView.appendChild(viewMyGardenBtn);
+        }
+      }
+
+      // Recent gardens display inside homepage view
+      const recentGardens = document.createElement('recent-gardens');
+      recentGardens.setAttribute('data-limit', '12');
+      recentGardens.setAttribute('data-show-empty', 'true');
+      recentGardens.style.marginTop = 'var(--spacing-xl)';
+      recentGardens.style.textAlign = 'left';
+      homepageView.appendChild(recentGardens);
+
+      main.appendChild(homepageView);
+    } else if (sections.length === 0 && !this.editMode) {
+      // Viewing a profile with no sections
       const emptyState = document.createElement('div');
       emptyState.className = 'empty-state';
 
@@ -293,29 +418,29 @@ class SiteApp extends HTMLElement {
       } else {
         const heading = document.createElement('h2');
         heading.style.textAlign = 'center';
-        heading.textContent = 'Login to create your garden';
+        heading.textContent = 'This garden is empty.';
         emptyState.appendChild(heading);
-        
-        const loginBtn = document.createElement('button');
-        loginBtn.className = 'button';
-        loginBtn.style.marginTop = 'var(--spacing-md)';
-        loginBtn.textContent = 'Login';
-        loginBtn.addEventListener('click', () => this.showLoginModal());
-        emptyState.appendChild(loginBtn);
       }
       
       main.appendChild(emptyState);
     } else {
+      // Viewing a profile with sections
       for (const section of sections) {
         const sectionEl = document.createElement('section-block');
         sectionEl.setAttribute('data-section', JSON.stringify(section));
         sectionEl.setAttribute('data-edit-mode', this.editMode.toString());
+        
+        // Listen for share-to-bluesky events from share sections
+        sectionEl.addEventListener('share-to-bluesky', () => {
+          this.shareToBluesky();
+        });
+        
         main.appendChild(sectionEl);
       }
     }
 
-    // Add section button in edit mode
-    if (this.editMode) {
+    // Add section button in edit mode (only on profile pages, not home)
+    if (this.editMode && !isHomePage) {
       const addBtn = document.createElement('button');
       addBtn.className = 'add-section';
       addBtn.textContent = '+ Add Section';
@@ -410,9 +535,17 @@ class SiteApp extends HTMLElement {
             <span class="icon">📝</span>
             <span>Content</span>
           </button>
-          <button data-type="guestbook" class="section-type">
-            <span class="icon">📖</span>
-            <span>Guestbook</span>
+          <button data-type="image" class="section-type">
+            <span class="icon">🖼️</span>
+            <span>Image</span>
+          </button>
+          <button data-type="smoke-signal" class="section-type">
+            <span class="icon">💨</span>
+            <span>Smoke Signal Event</span>
+          </button>
+          <button data-type="leaflet" class="section-type">
+            <span class="icon">📄</span>
+            <span>leaflet.pub Article</span>
           </button>
           <button data-type="flower-bed" class="section-type">
             <span class="icon">🌸</span>
@@ -430,6 +563,9 @@ class SiteApp extends HTMLElement {
             <span class="icon">📚</span>
             <span>Load Records</span>
           </button>
+          <div class="section-type-helper">
+            Load Records (Advanced): Load any AT Protocol record type to display. Rendering may vary—experiment and see what works!
+          </div>
           <button data-action="select-bsky-posts" class="section-type">
             <span class="icon">🦋</span>
             <span>Bluesky Posts</span>
@@ -483,14 +619,62 @@ class SiteApp extends HTMLElement {
       return;
     }
 
+    // If it's image, create a records section with image layout
+    if (type === 'image') {
+      const config = getConfig();
+      const id = `section-${Date.now()}`;
+      const section = {
+        id,
+        type: 'records',
+        layout: 'image',
+        title: 'Images',
+        records: [] // User can add image records via Load Records or section editing
+      };
+      config.sections = [...(config.sections || []), section];
+      this.render();
+      return;
+    }
+
+    // If it's smoke-signal, create a records section with smoke-signal layout
+    if (type === 'smoke-signal') {
+      const config = getConfig();
+      const id = `section-${Date.now()}`;
+      const section = {
+        id,
+        type: 'records',
+        layout: 'smoke-signal',
+        title: 'Events',
+        records: [] // User can add event records via Load Records or section editing
+      };
+      config.sections = [...(config.sections || []), section];
+      this.render();
+      return;
+    }
+
+    // If it's leaflet, create a records section with leaflet layout
+    if (type === 'leaflet') {
+      const config = getConfig();
+      const id = `section-${Date.now()}`;
+      const section = {
+        id,
+        type: 'records',
+        layout: 'leaflet',
+        title: 'Leaflet Posts',
+        records: [] // User can add leaflet.pub article records via Load Records or section editing
+      };
+      config.sections = [...(config.sections || []), section];
+      this.render();
+      return;
+    }
+
     const config = getConfig();
     const id = `section-${Date.now()}`;
 
     const section = {
       id,
       type,
-      layout: type === 'profile' ? 'profile' : type === 'guestbook' ? 'guestbook' : type === 'flower-bed' ? 'flower-bed' : type === 'collected-flowers' ? 'collected-flowers' : type === 'special-spore-display' ? 'special-spore-display' : 'card',
-      title: type === 'guestbook' ? 'Guestbook' : type === 'flower-bed' ? 'Flower Bed' : type === 'collected-flowers' ? 'Collected Flowers' : type === 'special-spore-display' ? 'Special Spore' : ''
+      layout: type === 'profile' ? 'profile' : type === 'flower-bed' ? 'flower-bed' : type === 'collected-flowers' ? 'collected-flowers' : type === 'special-spore-display' ? 'special-spore-display' : 'card',
+      title: type === 'flower-bed' ? 'Flower Bed' : type === 'collected-flowers' ? 'Collected Flowers' : type === 'special-spore-display' ? 'Special Spore' : ''
     };
 
     config.sections = [...(config.sections || []), section];
@@ -514,7 +698,9 @@ class SiteApp extends HTMLElement {
         subject: ownerDid,
         createdAt: new Date().toISOString()
       });
-      this.showNotification('You planted a flower in this garden!', 'success');
+      this.showNotification('You planted a flower! It will appear in the Flower Bed section.', 'success');
+      // Refresh to show the new flower
+      this.render();
     } catch (error) {
       console.error('Failed to plant flower:', error);
       this.showNotification(`Failed to plant flower: ${error.message}`, 'error');
@@ -523,26 +709,77 @@ class SiteApp extends HTMLElement {
 
   async takeFlower() {
     if (!isLoggedIn()) {
-      this.showNotification('You must be logged in to take a flower.', 'error');
+      this.showNotification('You must be logged in to take a seed.', 'error');
       return;
     }
 
     const ownerDid = getSiteOwnerDid();
     if (!ownerDid) {
-      this.showNotification('Could not determine the garden owner whose flower to take.', 'error');
+      this.showNotification('Could not determine the garden owner.', 'error');
       return;
     }
 
-    try {
-      await createRecord('garden.spores.social.takenFlower', {
-        sourceDid: ownerDid,
-        createdAt: new Date().toISOString()
-      });
-      this.showNotification('You took a flower from this garden!', 'success');
-    } catch (error) {
-      console.error('Failed to take flower:', error);
-      this.showNotification(`Failed to take flower: ${error.message}`, 'error');
-    }
+    // Show modal to optionally add a note
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.innerHTML = `
+      <div class="modal-content">
+        <h2>Take a Seed</h2>
+        <p>Collect a seed from this garden to plant in your own.</p>
+        <form class="take-seed-form">
+          <div class="form-group">
+            <label for="seed-note">Note (optional)</label>
+            <textarea 
+              id="seed-note" 
+              class="textarea" 
+              placeholder="Why are you collecting this seed? (optional)"
+              maxlength="500"
+              rows="3"
+            ></textarea>
+            <small class="form-hint">Add a note to remember why you collected this seed</small>
+          </div>
+          <div class="modal-actions">
+            <button type="submit" class="button button-primary">Take Seed</button>
+            <button type="button" class="button button-secondary modal-close">Cancel</button>
+          </div>
+        </form>
+      </div>
+    `;
+
+    const form = modal.querySelector('.take-seed-form');
+    const noteInput = modal.querySelector('#seed-note') as HTMLTextAreaElement;
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const note = noteInput.value.trim();
+      
+      modal.remove();
+
+      try {
+        const recordData: any = {
+          sourceDid: ownerDid,
+          createdAt: new Date().toISOString()
+        };
+        
+        // Only include note if provided
+        if (note) {
+          recordData.note = note;
+        }
+
+        await createRecord('garden.spores.social.takenFlower', recordData);
+        this.showNotification('Seed collected! View it in your Collected Flowers section.', 'success');
+      } catch (error) {
+        console.error('Failed to take flower:', error);
+        this.showNotification(`Failed to take seed: ${error.message}`, 'error');
+      }
+    });
+
+    modal.querySelector('.modal-close').addEventListener('click', () => modal.remove());
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) modal.remove();
+    });
+
+    document.body.appendChild(modal);
   }
 
   async shareToBluesky() {
@@ -741,8 +978,7 @@ class SiteApp extends HTMLElement {
    * Check if we're viewing a profile page (via /@ URL)
    */
   isViewingProfile(): boolean {
-    const pathMatch = location.pathname.match(/^\/@(.+)$/);
-    return pathMatch !== null;
+    return hasGardenIdentifierInUrl();
   }
 
   /**
@@ -752,23 +988,46 @@ class SiteApp extends HTMLElement {
    * Otherwise, show "loading your garden"
    */
   getLoadingMessage(): string {
-    // Check if URL has a specific garden identifier
-    const params = new URLSearchParams(location.search);
-    const hasDidParam = params.has('did');
-    const hasHandleParam = params.has('handle');
-    
-    // Check pathname for /@handle or /@did format
-    const pathMatch = location.pathname.match(/^\/@(.+)$/);
-    const hasPathIdentifier = pathMatch !== null;
-
     // If we're loading a specific garden, randomly choose message
-    if (hasDidParam || hasHandleParam || hasPathIdentifier) {
+    if (hasGardenIdentifierInUrl()) {
       const messages = ['loading spores', 'loading garden'];
       return messages[Math.floor(Math.random() * messages.length)];
     }
 
     // Otherwise, show default message
     return 'Loading your garden...';
+  }
+
+  /**
+   * Check if current user has already planted a flower in the given garden
+   */
+  async checkHasPlantedFlower(ownerDid: string, currentDid: string | null): Promise<boolean> {
+    if (!currentDid) return false;
+    
+    try {
+      const response = await getBacklinks(ownerDid, 'garden.spores.social.flower:subject', { limit: 100 });
+      const plantedFlowers = response.records || response.links || [];
+      return plantedFlowers.some(flower => flower.did === currentDid);
+    } catch (error) {
+      console.error('Failed to check planted flowers:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Check if current user has already taken a seed from the given garden
+   */
+  async checkHasTakenSeed(currentDid: string | null, ownerDid: string): Promise<boolean> {
+    if (!currentDid) return false;
+    
+    try {
+      const response = await listRecords(currentDid, 'garden.spores.social.takenFlower', { limit: 100 });
+      const takenFlowers = response.records || [];
+      return takenFlowers.some(record => record.value?.sourceDid === ownerDid);
+    } catch (error) {
+      console.error('Failed to check taken seeds:', error);
+      return false;
+    }
   }
 }
 
