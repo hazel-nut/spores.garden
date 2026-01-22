@@ -114,15 +114,17 @@ class SiteApp extends HTMLElement {
       // Listen for config updates
       window.addEventListener('config-updated', async () => {
         const config = getConfig();
-        // Re-apply theme when config is updated and wait for it to be ready
-        await applyTheme(config.theme);
+        // Only apply theme when viewing a garden page, not on home page
+        if (this.isViewingProfile()) {
+          await applyTheme(config.theme);
+        }
         this.render();
       });
 
       // Listen for add section requests
-      window.addEventListener('add-section', (e) => {
+      window.addEventListener('add-section', (e: Event) => {
         this.editMode = true;
-        this.showAddSectionModal(e.detail?.type);
+        this.showAddSectionModal((e as CustomEvent).detail?.type);
         this.render();
       });
 
@@ -720,12 +722,12 @@ class SiteApp extends HTMLElement {
 
     modal.querySelectorAll('.section-type').forEach(btn => {
       btn.addEventListener('click', () => {
-        const type = btn.dataset.type;
-        const action = btn.dataset.action;
+        const type = (btn as HTMLElement).dataset.type;
+        const action = (btn as HTMLElement).dataset.action;
 
         if (action) {
           modal.remove();
-          this.handleWelcomeAction(action);
+          this.handleWelcomeAction(action as WelcomeAction);
         } else if (type) {
           modal.remove();
           this.addSection(type);
@@ -1033,12 +1035,12 @@ class SiteApp extends HTMLElement {
         };
 
         // 3. Publish post
-        const result = await post(postRecord);
+        const result = await post(postRecord) as { uri: string; cid: string };
 
         // 4. Show success with post URL
         // AT Protocol URI format: at://did/app.bsky.feed.post/rkey
         // Convert to Bluesky web URL: https://bsky.app/profile/did/post/rkey
-        const uri = result.uri as string;
+        const uri = result.uri;
         const uriParts = uri.replace('at://', '').split('/');
         const postDid = uriParts[0];
         const postRkey = uriParts[2];
@@ -1191,8 +1193,8 @@ class SiteApp extends HTMLElement {
       modal.appendChild(modalContent);
 
       // Save button handler
-      const saveBtn = footer.querySelector('#config-save-btn');
-      saveBtn.addEventListener('click', async () => {
+      const saveBtn = footer.querySelector('#config-save-btn') as HTMLButtonElement | null;
+      saveBtn?.addEventListener('click', async () => {
         if (saveBtn) {
           saveBtn.disabled = true;
           saveBtn.textContent = 'Saving...';

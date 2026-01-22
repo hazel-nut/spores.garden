@@ -12,7 +12,7 @@ import { getCollections, getAllRecords, groupByCollection } from '../records/loa
 import { getCurrentDid, getAgent } from '../oauth';
 import { addSection, getConfig, updateConfig, updateTheme, saveConfig } from '../config';
 import { getProfile } from '../at-client';
-import { generateThemeFromDid, applyTheme } from '../themes/engine';
+import { generateThemeFromDid } from '../themes/engine';
 import type { ATRecord } from '../types';
 import './did-visualization';
 import './theme-metadata';
@@ -90,13 +90,14 @@ class WelcomeModal extends HTMLElement {
           <button id="generate-styles-btn" class="button button-primary">Generate unique styles from your DID</button>
         </div>
         <div id="onboarding-step-2" style="display: none;">
-          <p>Your unique theme has been generated! Here is a visualization of your DID:</p>
+          <h2 class="theme-generated-title">Your unique theme has been generated!</h2>
+          <p class="theme-generated-subtitle">Here is a visualization of your DID:</p>
+          <did-visualization did="${this.did}" show-info></did-visualization>
           <div class="generative-art-explanation">
-            <p><strong>Your DID (Decentralized Identifier) generates a unique visual flower pattern.</strong> This is your digital signature—no two gardens look the same, and your flower remains consistent across the network.</p>
+            <p>Your DID (Decentralized Identifier) generates a unique visual flower pattern. This is your digital signature—no two gardens look the same, and your flower remains consistent across the network.</p>
             <p>The colors, patterns, and shape are derived from your DID's cryptographic hash, creating a one-of-a-kind garden theme that's yours forever.</p>
           </div>
-          <did-visualization did="${this.did}" show-info></did-visualization>
-          <p class="favicon-note">this is the generated favicon for your garden's page.</p>
+          <p class="favicon-note">This is the generated favicon for your garden's page.</p>
           <theme-metadata></theme-metadata>
           <button id="save-continue-btn" class="button button-primary">Save & Continue</button>
 
@@ -118,7 +119,8 @@ class WelcomeModal extends HTMLElement {
         if (this.did) {
           const { theme, metadata } = generateThemeFromDid(this.did);
           updateTheme(theme);
-          applyTheme(theme);
+          // Don't apply theme here - user is on home page during onboarding
+          // Theme will be applied when they navigate to their garden
 
           if (titleInput && subtitleInput) {
             updateConfig({
@@ -141,7 +143,13 @@ class WelcomeModal extends HTMLElement {
     if (saveBtn) {
       saveBtn.addEventListener('click', async () => {
         await saveConfig({ isInitialOnboarding: true });
-        this.close();
+        // Navigate to the user's garden after onboarding completes
+        // This ensures they see their garden with the new theme, not the home page
+        if (this.did) {
+          window.location.href = `/@${this.did}`;
+        } else {
+          this.close();
+        }
       });
     }
   }
