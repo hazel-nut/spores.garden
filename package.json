@@ -22,6 +22,7 @@
   },
   "devDependencies": {
     "@types/chroma-js": "^3.1.2",
+    "sharp": "^0.34.1",
     "@types/dompurify": "^3.0.5",
     "@vitest/ui": "^4.0.17",
     "happy-dom": "^20.3.4",
