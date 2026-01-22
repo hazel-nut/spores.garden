@@ -368,16 +368,14 @@ class CreateProfile extends HTMLElement {
       record.banner = await this.uploadImageBlob(this.bannerFile);
     }
     
-    const response = await createRecord('garden.spores.site.profile', record);
-    
-    // Extract rkey from the response URI
-    const rkey = response.uri.split('/').pop();
+    // Use 'self' as a consistent rkey for the user's profile
+    await putRecord('garden.spores.site.profile', 'self', record);
     
     // Add section to config referencing this profile
     const section: any = {
       type: 'profile',
       collection: 'garden.spores.site.profile',
-      rkey: rkey
+      rkey: 'self'
     };
     
     if (this.displayName) {
@@ -467,16 +465,14 @@ class CreateProfile extends HTMLElement {
         record.banner = await this.uploadImageBlob(this.bannerFile);
       }
       
-      const response = await createRecord('garden.spores.site.profile', record);
+      // Use 'self' as a consistent rkey for the user's profile
+      await putRecord('garden.spores.site.profile', 'self', record);
       
-      // Extract rkey from the response URI
-      const rkey = response.uri.split('/').pop();
-      
-      // Update the section to reference the new profile record
+      // Update the section to reference the profile record
       if (this.editSectionId) {
         const updates: any = {
           collection: 'garden.spores.site.profile',
-          rkey: rkey
+          rkey: 'self'
         };
         if (this.displayName) {
           updates.title = this.displayName;
