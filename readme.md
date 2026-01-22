@@ -30,7 +30,7 @@ The app automatically resolves handles to DIDs using the AT Protocol identity se
 ## Lexicons
 
 **Required Records:**
-- `garden.spores.site.config` - Site configuration (title, subtitle, description, favicon)
+- `garden.spores.site.config` - Site configuration (title, subtitle)
 
 **User Content:**
 - `garden.spores.site.content` - Custom content blocks (user-authored)

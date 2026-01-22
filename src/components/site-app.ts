@@ -171,13 +171,12 @@ class SiteApp extends HTMLElement {
     // On home page, always show default title/subtitle regardless of login state
     const displayTitle = isHomePage ? 'spores.garden' : (config.title || 'spores.garden');
     const displaySubtitle = isHomePage ? 'A personal ATProto website' : (config.subtitle || 'A personal ATProto website');
-    const displayDescription = isHomePage ? 'A personal ATProto website' : (config.description || 'A personal ATProto website');
 
     // Update title and meta description
     document.title = displayTitle;
     const metaDescription = document.querySelector('#meta-description') as HTMLMetaElement;
     if (metaDescription) {
-      metaDescription.content = displayDescription;
+      metaDescription.content = displaySubtitle;
     }
 
     this.innerHTML = '';
