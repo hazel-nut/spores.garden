@@ -5,7 +5,7 @@
  */
 
 import { getCollectionRecords, getRecordsByUris } from '../records/loader';
-import { getSiteOwnerDid, getConfig, updateSection, removeSection, moveSectionUp, moveSectionDown } from '../config';
+import { getSiteOwnerDid, getConfig, updateSection, removeSection, moveSectionUp, moveSectionDown, saveConfig } from '../config';
 import { getProfile, getRecord, getBlobUrl } from '../at-client';
 import { renderRecord, getAvailableLayouts } from '../layouts/index';
 import { renderFlowerBed } from '../layouts/flower-bed';
@@ -259,6 +259,15 @@ class SectionBlock extends HTMLElement {
           }
         }
         removeSection(this.section.id);
+        
+        // Save the updated sections to PDS
+        try {
+          await saveConfig();
+        } catch (error) {
+          console.error('Failed to save sections after deletion:', error);
+          // Section is already removed from UI, but may need to be re-added on reload
+        }
+        
         this.remove();
       }
     });
