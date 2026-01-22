@@ -1,14 +1,29 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta id="meta-description" name="description" content="A digital garden that goes where you go - powered by AT Protocol">
+  <meta id="meta-description" name="description"
+    content="A digital garden that goes where you go - powered by AT Protocol">
   <title>spores.garden</title>
   <link rel="stylesheet" href="/src/themes/base.css">
+  <script>
+    // GitHub Pages SPA redirect handler
+    // Restore the URL from sessionStorage if we were redirected from 404.html
+    (function () {
+      var redirect = sessionStorage.redirect;
+      delete sessionStorage.redirect;
+      if (redirect && redirect !== location.href) {
+        history.replaceState(null, null, redirect);
+      }
+    })();
+  </script>
   <script type="module" src="/src/main.ts"></script>
 </head>
+
 <body>
   <site-app></site-app>
 </body>
+
 </html>

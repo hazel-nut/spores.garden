@@ -31,7 +31,6 @@ import {
   WebDidDocumentResolver
 } from '@atcute/identity-resolver';
 import { Client } from '@atcute/client';
-import { getPdsEndpoint } from '@atcute/identity';
 import type { OAuthConfig, OAuthSession, ATClientOptions } from './types';
 
 const SESSION_STORAGE_KEY = 'spores_garden_oauth_session';
@@ -71,7 +70,7 @@ export async function initOAuth(config: OAuthConfig) {
 
   // Check for OAuth callback first (takes precedence)
   await handleOAuthCallback();
-  
+
   // If no callback and not logged in, try to restore session from storage
   if (!currentAgent && !currentSession) {
     await restoreSession();
@@ -85,7 +84,7 @@ async function handleOAuthCallback() {
   // Check both hash fragment and query parameters
   let params: URLSearchParams | null = null;
   let hadHash = false;
-  
+
   // Try hash fragment first (OAuth implicit flow)
   if (location.hash.length > 1) {
     params = new URLSearchParams(location.hash.slice(1));
@@ -95,7 +94,7 @@ async function handleOAuthCallback() {
   else if (location.search.length > 1) {
     params = new URLSearchParams(location.search.slice(1));
   }
-  
+
   if (!params || (!params.has('state') || (!params.has('code') && !params.has('error')))) {
     return;
   }
@@ -105,10 +104,10 @@ async function handleOAuthCallback() {
     const error = params.get('error');
     const errorDescription = params.get('error_description') || error;
     console.error('OAuth error in callback:', error, errorDescription);
-    
+
     // Clean up URL
     history.replaceState(null, '', location.pathname);
-    
+
     window.dispatchEvent(new CustomEvent('auth-error', {
       detail: { error: new Error(errorDescription || 'OAuth authorization failed') }
     }));
@@ -136,7 +135,7 @@ async function handleOAuthCallback() {
   } catch (error) {
     // Clean up URL even on error to prevent retry loops
     history.replaceState(null, '', location.pathname);
-    
+
     // Check if it's a stale state error
     const errorMessage = error instanceof Error ? error.message : String(error);
     if (errorMessage.includes('unknown state') || errorMessage.includes('state')) {
@@ -144,7 +143,7 @@ async function handleOAuthCallback() {
       // Don't dispatch error for stale states - user can try logging in again
       return;
     }
-    
+
     console.error('OAuth callback failed:', error);
     window.dispatchEvent(new CustomEvent('auth-error', {
       detail: { error }
@@ -184,12 +183,12 @@ function saveSessionToStorage(session: OAuthSession) {
     const sessionData: Record<string, unknown> = {
       info: session.info
     };
-    
+
     // Store known OAuth session properties if they exist
     if (sessionAny.accessToken) sessionData.accessToken = sessionAny.accessToken;
     if (sessionAny.refreshToken) sessionData.refreshToken = sessionAny.refreshToken;
     if (sessionAny.expiresAt) sessionData.expiresAt = sessionAny.expiresAt;
-    
+
     // Store any other enumerable properties (but skip functions)
     for (const key in sessionAny) {
       if (key !== 'info' && key !== 'accessToken' && key !== 'refreshToken' && key !== 'expiresAt') {
@@ -205,7 +204,7 @@ function saveSessionToStorage(session: OAuthSession) {
         }
       }
     }
-    
+
     sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(sessionData));
   } catch (error) {
     console.warn('Failed to save session to storage:', error);
@@ -224,7 +223,7 @@ async function restoreSession() {
     }
 
     const sessionData = JSON.parse(stored);
-    
+
     // Check if session is expired
     if (sessionData.expiresAt && new Date(sessionData.expiresAt).getTime() < Date.now()) {
       console.log('Stored session has expired, clearing');
@@ -545,7 +544,7 @@ export async function uploadBlob(blob: Blob, mimeType: string) {
     }
 
     const data = await response.json();
-    
+
     // Return response in the same format as other functions (with ok and data properties)
     return {
       ok: true,

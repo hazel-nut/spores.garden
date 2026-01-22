@@ -1,0 +1,19 @@
+{
+    "client_id": "https://spores.garden/client-metadata.json",
+    "client_name": "spores.garden",
+    "client_uri": "https://spores.garden",
+    "redirect_uris": [
+        "https://spores.garden/"
+    ],
+    "scope": "atproto transition:generic",
+    "grant_types": [
+        "authorization_code",
+        "refresh_token"
+    ],
+    "response_types": [
+        "code"
+    ],
+    "application_type": "web",
+    "token_endpoint_auth_method": "none",
+    "dpop_bound_access_tokens": true
+}

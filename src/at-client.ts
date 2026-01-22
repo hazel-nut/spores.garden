@@ -3,7 +3,6 @@
  */
 
 import { Client } from '@atcute/client';
-import { getPdsEndpoint } from '@atcute/identity';
 import {
   CompositeDidDocumentResolver,
   PlcDidDocumentResolver,
@@ -32,9 +31,20 @@ async function resolvePdsEndpoint(did: string): Promise<string | null> {
       }
     });
 
-    const doc = await resolver.resolve(did);
-    const pds = getPdsEndpoint(doc);
-    
+    const doc = await resolver.resolve(did as `did:plc:${string}` | `did:web:${string}`);
+    // Extract PDS endpoint from DID document
+    const service = doc?.service?.find((s: any) => s.id === '#atproto_pds');
+    let pds: string | null = null;
+
+    if (service?.serviceEndpoint) {
+      // serviceEndpoint can be a string, object, or array
+      if (typeof service.serviceEndpoint === 'string') {
+        pds = service.serviceEndpoint;
+      } else if (Array.isArray(service.serviceEndpoint) && service.serviceEndpoint.length > 0) {
+        pds = typeof service.serviceEndpoint[0] === 'string' ? service.serviceEndpoint[0] : null;
+      }
+    }
+
     if (pds) {
       pdsCache.set(did, pds);
       return pds;
@@ -159,7 +169,7 @@ export async function listRecords(did, collection, options = {}, agent = null) {
       if (!agent || typeof agent !== 'object') {
         throw new Error('Invalid agent: agent is not a valid object');
       }
-      
+
       // Resolve PDS endpoint to ensure client uses correct service
       const pdsUrl = await resolvePdsEndpoint(did);
 
@@ -168,9 +178,9 @@ export async function listRecords(did, collection, options = {}, agent = null) {
       if (pdsUrl) {
         clientOptions.serviceUrl = pdsUrl;
       }
-      
+
       const client = new Client(clientOptions);
-      
+
       // Use get() for queries (listRecords is a query)
       const response = await client.get('com.atproto.repo.listRecords', {
         params: {
@@ -201,7 +211,7 @@ export async function listRecords(did, collection, options = {}, agent = null) {
   // Fall back to PDS (resolved from DID) or Slingshot
   const pdsUrl = await resolvePdsEndpoint(did);
   const serviceUrl = pdsUrl || ENDPOINTS.SLINGSHOT_URL;
-  
+
   if (!pdsUrl) {
     console.warn(`Could not resolve PDS for ${did}, falling back to Slingshot`);
   }
@@ -214,7 +224,7 @@ export async function listRecords(did, collection, options = {}, agent = null) {
 
   try {
     const response = await fetch(url);
-    
+
     if (!response.ok) {
       // If PDS fails and we haven't tried Slingshot yet, try it
       if (pdsUrl && serviceUrl === pdsUrl) {
@@ -224,26 +234,26 @@ export async function listRecords(did, collection, options = {}, agent = null) {
         fallbackUrl.searchParams.set('collection', collection);
         fallbackUrl.searchParams.set('limit', limit.toString());
         if (cursor) fallbackUrl.searchParams.set('cursor', cursor);
-        
+
         const fallbackResponse = await fetch(fallbackUrl);
         if (!fallbackResponse.ok) {
           const errorText = await fallbackResponse.text().catch(() => 'Unknown error');
           throw new Error(`Failed to list records: ${fallbackResponse.status} ${fallbackResponse.statusText}. ${errorText}`);
         }
-        
+
         const data = await fallbackResponse.json();
         if (!data || !data.records) {
           throw new Error('Invalid response format: missing records array');
         }
         return data;
       }
-      
+
       const errorText = await response.text().catch(() => 'Unknown error');
       throw new Error(`Failed to list records: ${response.status} ${response.statusText}. ${errorText}`);
     }
 
     const data = await response.json();
-    
+
     if (!data || !data.records) {
       throw new Error('Invalid response format: missing records array');
     }
@@ -275,13 +285,13 @@ export async function describeRepo(did, agent = null) {
 
       // Resolve PDS endpoint
       const pdsUrl = await resolvePdsEndpoint(did);
-      
+
       // Create client with explicit service URL if we have it
       const clientOptions: any = { handler: agent };
       if (pdsUrl) {
         clientOptions.serviceUrl = pdsUrl;
       }
-      
+
       const client = new Client(clientOptions);
 
       // Use get() for queries
@@ -300,12 +310,12 @@ export async function describeRepo(did, agent = null) {
       // (but only if it's not a 404 - 404 means repo doesn't exist)
       const errorMessage = error instanceof Error ? error.message : String(error);
       const statusCode = error?.statusCode || error?.status;
-      
+
       if (statusCode === 404) {
         console.warn('Authenticated call returned 404, repo may not exist');
         throw error; // Don't fall back for 404s
       }
-      
+
       console.warn('Failed to describe repo via authenticated agent, falling back to Slingshot:', errorMessage);
       // Fall through to Slingshot
     }
@@ -314,7 +324,7 @@ export async function describeRepo(did, agent = null) {
   // Fall back to PDS (resolved from DID) or Slingshot
   const pdsUrl = await resolvePdsEndpoint(did);
   const serviceUrl = pdsUrl || ENDPOINTS.SLINGSHOT_URL;
-  
+
   if (!pdsUrl) {
     console.warn(`Could not resolve PDS for ${did}, falling back to Slingshot`);
   }
@@ -324,33 +334,33 @@ export async function describeRepo(did, agent = null) {
 
   try {
     const response = await fetch(url);
-    
+
     if (!response.ok) {
       // If PDS fails and we haven't tried Slingshot yet, try it
       if (pdsUrl && serviceUrl === pdsUrl) {
         console.warn(`PDS request failed for ${pdsUrl}, trying Slingshot`);
         const fallbackUrl = new URL('/xrpc/com.atproto.repo.describeRepo', ENDPOINTS.SLINGSHOT_URL);
         fallbackUrl.searchParams.set('repo', did);
-        
+
         const fallbackResponse = await fetch(fallbackUrl);
         if (!fallbackResponse.ok) {
           const errorText = await fallbackResponse.text().catch(() => 'Unknown error');
           throw new Error(`Failed to describe repo: ${fallbackResponse.status} ${fallbackResponse.statusText}. ${errorText}`);
         }
-        
+
         const data = await fallbackResponse.json();
         if (!data) {
           throw new Error('Empty response from describeRepo');
         }
         return data;
       }
-      
+
       const errorText = await response.text().catch(() => 'Unknown error');
       throw new Error(`Failed to describe repo: ${response.status} ${response.statusText}. ${errorText}`);
     }
 
     const data = await response.json();
-    
+
     if (!data) {
       throw new Error('Empty response from describeRepo');
     }
@@ -467,7 +477,7 @@ export async function getBlobUrl(did: string, blobRef: { ref?: { $link: string }
   // Resolve the PDS endpoint for this DID
   const pdsUrl = await resolvePdsEndpoint(did);
   const serviceUrl = pdsUrl || 'https://bsky.social';
-  
+
   return `${serviceUrl}/xrpc/com.atproto.sync.getBlob?did=${encodeURIComponent(did)}&cid=${encodeURIComponent(cid)}`;
 }
 
