@@ -68,6 +68,7 @@ interface LexiconSchema {
   url?: FieldMapping;
   image?: FieldMapping;
   images?: FieldMapping;
+  banner?: FieldMapping;
   date?: FieldMapping;
   author?: FieldMapping;
   tags?: FieldMapping;
@@ -156,8 +157,8 @@ const LEXICON_SCHEMAS: Record<string, LexiconSchema> = {
 
   // Spores.garden Profile
   'garden.spores.site.profile': {
-    title: 'name',
-    content: 'bio',
+    title: 'displayName',
+    content: 'description',
     image: 'avatar',
     confidence: 'high',
     preferredLayout: 'profile'
@@ -183,6 +184,44 @@ const LEXICON_SCHEMAS: Record<string, LexiconSchema> = {
     content: 'note', // Optional note when taking flower
     date: 'createdAt',
     confidence: 'high'
+  },
+
+  // Community Calendar Event (Smoke Signal)
+  'community.lexicon.calendar.event': {
+    title: 'name',
+    content: 'description',
+    date: 'startsAt',
+    url: (record) => {
+      // Try to extract URL from uris array
+      const uris = record.value?.uris;
+      if (Array.isArray(uris) && uris.length > 0) {
+        return uris[0]?.uri;
+      }
+      return undefined;
+    },
+    confidence: 'high',
+    preferredLayout: 'smoke-signal'
+  },
+
+  // Community Calendar RSVP (Smoke Signal - attending events)
+  'community.lexicon.calendar.rsvp': {
+    title: (record) => {
+      // Generate title from status
+      const status = record.value?.status || 'going';
+      const statusLabel = status.includes('#') ? status.split('#').pop() : status;
+      return `RSVP: ${statusLabel}`;
+    },
+    content: (record) => {
+      // Try to describe what event this is for
+      const subject = record.value?.subject;
+      if (subject?.uri) {
+        return `Event: ${subject.uri}`;
+      }
+      return undefined;
+    },
+    date: 'createdAt',
+    confidence: 'high',
+    preferredLayout: 'smoke-signal'
   },
 
   // Leaflet.pub Document (long-form publishing)
@@ -232,7 +271,9 @@ const KNOWN_LEXICONS = new Set([
   'garden.spores.site.profile',
   'garden.spores.social.flower',
   'garden.spores.social.takenFlower',
-  'pub.leaflet.document'
+  'pub.leaflet.document',
+  'community.lexicon.calendar.event',
+  'community.lexicon.calendar.rsvp'
 ]);
 
 /**
@@ -258,8 +299,9 @@ const FIELD_MAPPINGS = {
   title: ['title', 'name', 'displayName', 'subject', 'heading'],
   content: ['content', 'text', 'description', 'message', 'body', 'summary', 'bio'],
   url: ['url', 'uri', 'link', 'href', 'website'],
-  image: ['image', 'avatar', 'thumbnail', 'banner', 'picture', 'photo'],
+  image: ['image', 'avatar', 'thumbnail', 'picture', 'photo'],
   images: ['images', 'photos', 'media', 'attachments', 'blobs'],
+  banner: ['banner', 'coverImage', 'cover', 'header', 'headerImage'],
   date: ['createdAt', 'indexedAt', 'publishedAt', 'updatedAt', 'timestamp', 'date'],
   author: ['author', 'creator', 'by', 'from'],
   tags: ['tags', 'labels', 'categories', 'topics', 'keywords'],
@@ -361,6 +403,7 @@ export function extractFields(record) {
     // Media
     image: extractImage(record, lexiconType),
     images: extractImages(record, lexiconType),
+    banner: extractBanner(record, lexiconType),
 
     // Metadata
     date: extractDate(record, lexiconType),
@@ -423,6 +466,44 @@ function extractImage(record, lexiconType?: string) {
   const images = extractImages(record, lexiconType);
   if (images && images.length > 0) {
     return images[0];
+  }
+
+  return undefined;
+}
+
+/**
+ * Extract banner field, handling various formats
+ * Uses schema registry when available
+ */
+function extractBanner(record, lexiconType?: string) {
+  const value = record.value || record;
+
+  // Try schema-based extraction first
+  const schemaBanner = extractField(record, 'banner', lexiconType);
+  if (schemaBanner) {
+    // Handle schema result (could be string URL, blob ref, or custom format)
+    if (typeof schemaBanner === 'string') return schemaBanner;
+    if (schemaBanner.url) return schemaBanner.url;
+    if (schemaBanner.$type === 'blob' || schemaBanner.ref) {
+      return formatBlobUrl(record, schemaBanner);
+    }
+  }
+
+  // Fall back to heuristic extraction
+  for (const name of FIELD_MAPPINGS.banner) {
+    const banner = value[name];
+    if (!banner) continue;
+
+    // If it's a string URL, return directly
+    if (typeof banner === 'string') return banner;
+
+    // If it's a blob reference
+    if (banner.$type === 'blob' || banner.ref) {
+      return formatBlobUrl(record, banner);
+    }
+
+    // If it has a url property
+    if (banner.url) return banner.url;
   }
 
   return undefined;

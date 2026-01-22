@@ -1,6 +1,6 @@
 /**
  * Modal for creating and editing content blocks.
- * Supports markdown, HTML, and plain text formats.
+ * Supports markdown and HTML formats.
  */
 
 import { createRecord, putRecord } from '../oauth';
@@ -61,7 +61,6 @@ class CreateContent extends HTMLElement {
           <select id="content-format" class="select">
             <option value="markdown" ${this.selectedFormat === 'markdown' ? 'selected' : ''}>Markdown</option>
             <option value="html" ${this.selectedFormat === 'html' ? 'selected' : ''}>HTML</option>
-            <option value="text" ${this.selectedFormat === 'text' ? 'selected' : ''}>Plain Text</option>
           </select>
         </div>
         
