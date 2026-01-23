@@ -6,12 +6,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>spores.garden</title>
     <script>
-        // GitHub Pages SPA redirect hack
-        // This script takes the current URL and redirects to the index page
-        // with the path encoded in the query string, which our app can then parse
-        sessionStorage.redirect = location.href;
+        // GitHub Pages SPA redirect: only for app routes, not for /.well-known/ or /lexicons/
+        // (schema/lexicon URLs must not redirect to the SPA or validators get HTML instead of JSON)
+        (function () {
+            var p = location.pathname;
+            if (p.indexOf('/.well-known/') === 0 || p.indexOf('/lexicons/') === 0) {
+                document.body.innerHTML = '<h1>404 Not Found</h1>';
+                return;
+            }
+            sessionStorage.redirect = location.href;
+            location.replace('/');
+        })();
     </script>
-    <meta http-equiv="refresh" content="0;URL='/'">
 </head>
 
 <body>

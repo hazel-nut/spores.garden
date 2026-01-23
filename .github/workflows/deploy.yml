@@ -39,6 +39,11 @@ jobs:
         
       - name: Build
         run: npm run build
+
+      - name: Verify lexicons in dist
+        run: |
+          test -f dist/.well-known/atproto-lexicon/garden.spores.social.flower || (echo "Missing .well-known lexicons in dist" && exit 1)
+          test -f dist/.well-known/atproto-lexicons || (echo "Missing .well-known/atproto-lexicons bundle" && exit 1)
         
       - name: Setup Pages
         uses: actions/configure-pages@v4

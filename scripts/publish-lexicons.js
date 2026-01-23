@@ -38,16 +38,21 @@ files.forEach(file => {
     const legacyDest = path.join(publicLexiconsDir, file);
     fs.copyFileSync(srcPath, legacyDest);
 
-    // 2. /.well-known/atproto-lexicon/<nsid>
+    // 2. /.well-known/atproto-lexicon/<nsid> and .json alias
     const rfcDest = path.join(atProtoLexiconDir, nsid);
+    const rfcDestJson = path.join(atProtoLexiconDir, `${nsid}.json`);
     fs.writeFileSync(rfcDest, content); // Write content without extension
+    fs.writeFileSync(rfcDestJson, content);
 
     console.log(`  - ${nsid}`);
 });
 
 // 3. /.well-known/atproto-lexicons (bundle)
 const bundlePath = path.join(wellKnownDir, 'atproto-lexicons');
-fs.writeFileSync(bundlePath, JSON.stringify(bundle, null, 2));
+const bundlePathJson = path.join(wellKnownDir, 'atproto-lexicons.json');
+const bundleContent = JSON.stringify(bundle, null, 2);
+fs.writeFileSync(bundlePath, bundleContent);
+fs.writeFileSync(bundlePathJson, bundleContent);
 console.log(`  - Bundle written to ${bundlePath}`);
 
 console.log('Done!');
