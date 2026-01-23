@@ -69,16 +69,16 @@ class CreateProfile extends HTMLElement {
   private render() {
     this.className = 'modal';
     this.style.display = 'flex';
-    
-    const avatarPreview = this.avatarFile 
+
+    const avatarPreview = this.avatarFile
       ? `<div class="selected-file">New: ${this.avatarFile.name}</div>`
-      : this.existingAvatar 
+      : this.existingAvatar
         ? `<div class="selected-file existing">Current avatar set</div>`
         : '';
-    
-    const bannerPreview = this.bannerFile 
+
+    const bannerPreview = this.bannerFile
       ? `<div class="selected-file">New: ${this.bannerFile.name}</div>`
-      : this.existingBanner 
+      : this.existingBanner
         ? `<div class="selected-file existing">Current banner set</div>`
         : '';
 
@@ -191,23 +191,23 @@ class CreateProfile extends HTMLElement {
     const cancelBtn = this.querySelector('.modal-close') as HTMLButtonElement;
     const clearAvatarBtn = this.querySelector('.clear-avatar-btn') as HTMLButtonElement;
     const clearBannerBtn = this.querySelector('.clear-banner-btn') as HTMLButtonElement;
-    
+
     // Handle display name input
     displayNameInput?.addEventListener('input', (e) => {
       this.displayName = (e.target as HTMLInputElement).value.trim();
     });
-    
+
     // Handle description input
     descriptionTextarea?.addEventListener('input', (e) => {
       this.description = (e.target as HTMLTextAreaElement).value;
     });
-    
+
     // Avatar drop zone handlers
     this.setupDropZone(avatarDropZone, avatarInput, 'avatar', 1000000);
-    
+
     // Banner drop zone handlers
     this.setupDropZone(bannerDropZone, bannerInput, 'banner', 2000000);
-    
+
     // Clear buttons
     clearAvatarBtn?.addEventListener('click', (e) => {
       e.preventDefault();
@@ -215,28 +215,28 @@ class CreateProfile extends HTMLElement {
       this.existingAvatar = null;
       this.render();
     });
-    
+
     clearBannerBtn?.addEventListener('click', (e) => {
       e.preventDefault();
       this.bannerFile = null;
       this.existingBanner = null;
       this.render();
     });
-    
+
     // Handle create/save button
     createBtn?.addEventListener('click', async () => {
       if (createBtn) {
         createBtn.disabled = true;
         createBtn.textContent = this.editMode ? 'Saving...' : 'Creating...';
       }
-      
+
       try {
         if (this.editMode) {
           await this.updateProfileRecord();
         } else {
           await this.createProfileRecord();
         }
-        
+
         this.close();
       } catch (error) {
         console.error(`Failed to ${this.editMode ? 'update' : 'create'} profile:`, error);
@@ -247,10 +247,10 @@ class CreateProfile extends HTMLElement {
         }
       }
     });
-    
+
     // Handle cancel button
     cancelBtn?.addEventListener('click', () => this.close());
-    
+
     // Handle backdrop click
     this.addEventListener('click', (e) => {
       if (e.target === this) {
@@ -260,8 +260,8 @@ class CreateProfile extends HTMLElement {
   }
 
   private setupDropZone(
-    dropZone: HTMLDivElement | null, 
-    fileInput: HTMLInputElement | null, 
+    dropZone: HTMLDivElement | null,
+    fileInput: HTMLInputElement | null,
     type: 'avatar' | 'banner',
     maxSize: number
   ) {
@@ -323,7 +323,7 @@ class CreateProfile extends HTMLElement {
       this.bannerFile = file;
       this.existingBanner = null;
     }
-    
+
     this.render();
   }
 
@@ -350,40 +350,40 @@ class CreateProfile extends HTMLElement {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
-    
+
     if (this.displayName) {
       record.displayName = this.displayName;
     }
     if (this.description) {
       record.description = this.description;
     }
-    
+
     // Upload avatar if selected
     if (this.avatarFile) {
       record.avatar = await this.uploadImageBlob(this.avatarFile);
     }
-    
+
     // Upload banner if selected
     if (this.bannerFile) {
       record.banner = await this.uploadImageBlob(this.bannerFile);
     }
-    
+
     // Use 'self' as a consistent rkey for the user's profile
     await putRecord('garden.spores.site.profile', 'self', record);
-    
+
     // Add section to config referencing this profile
     const section: any = {
       type: 'profile',
       collection: 'garden.spores.site.profile',
       rkey: 'self'
     };
-    
+
     if (this.displayName) {
       section.title = this.displayName;
     }
-    
+
     addSection(section);
-    
+
     // Trigger re-render
     window.dispatchEvent(new CustomEvent('config-updated'));
   }
@@ -395,47 +395,57 @@ class CreateProfile extends HTMLElement {
     }
 
     if (this.editRkey) {
-      // Update existing profile record
+      // Load existing record first to merge all fields
+      let existingRecord: any = {};
+      try {
+        const existing = await getRecord(ownerDid, 'garden.spores.site.profile', this.editRkey);
+        if (existing?.value) {
+          existingRecord = existing.value;
+        }
+      } catch (error) {
+        console.warn('Could not load existing record, creating new one:', error);
+      }
+
+      // Start with existing record and update only changed fields
       const record: any = {
+        ...existingRecord,
         $type: 'garden.spores.site.profile',
         updatedAt: new Date().toISOString()
       };
-      
-      if (this.displayName !== undefined) {
-        record.displayName = this.displayName;
-      }
-      if (this.description !== undefined) {
-        record.description = this.description;
-      }
-      
+
+      // Update displayName (even if empty string, as user may have cleared it)
+      record.displayName = this.displayName;
+
+      // Update description (even if empty string, as user may have cleared it)
+      record.description = this.description;
+
       // Handle avatar: new file, existing blob, or cleared
       if (this.avatarFile) {
         record.avatar = await this.uploadImageBlob(this.avatarFile);
       } else if (this.existingAvatar) {
         record.avatar = this.existingAvatar;
+      } else {
+        // Avatar was explicitly cleared
+        delete record.avatar;
       }
-      // If neither, avatar is not set (cleared)
-      
+
       // Handle banner: new file, existing blob, or cleared
       if (this.bannerFile) {
         record.banner = await this.uploadImageBlob(this.bannerFile);
       } else if (this.existingBanner) {
         record.banner = this.existingBanner;
+      } else {
+        // Banner was explicitly cleared
+        delete record.banner;
       }
-      // If neither, banner is not set (cleared)
-      
+
       // Preserve createdAt if it exists
-      try {
-        const existing = await getRecord(ownerDid, 'garden.spores.site.profile', this.editRkey);
-        if (existing?.value?.createdAt) {
-          record.createdAt = existing.value.createdAt;
-        }
-      } catch (error) {
-        console.warn('Could not load existing record to preserve createdAt:', error);
+      if (existingRecord.createdAt) {
+        record.createdAt = existingRecord.createdAt;
       }
-      
+
       await putRecord('garden.spores.site.profile', this.editRkey, record);
-      
+
       // Update section config if displayName changed
       if (this.editSectionId && this.displayName) {
         updateSection(this.editSectionId, { title: this.displayName });
@@ -447,27 +457,27 @@ class CreateProfile extends HTMLElement {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       };
-      
+
       if (this.displayName) {
         record.displayName = this.displayName;
       }
       if (this.description) {
         record.description = this.description;
       }
-      
+
       // Upload avatar if selected
       if (this.avatarFile) {
         record.avatar = await this.uploadImageBlob(this.avatarFile);
       }
-      
+
       // Upload banner if selected
       if (this.bannerFile) {
         record.banner = await this.uploadImageBlob(this.bannerFile);
       }
-      
+
       // Use 'self' as a consistent rkey for the user's profile
       await putRecord('garden.spores.site.profile', 'self', record);
-      
+
       // Update the section to reference the profile record
       if (this.editSectionId) {
         const updates: any = {
@@ -480,7 +490,7 @@ class CreateProfile extends HTMLElement {
         updateSection(this.editSectionId, updates);
       }
     }
-    
+
     // Trigger re-render
     window.dispatchEvent(new CustomEvent('config-updated'));
   }
