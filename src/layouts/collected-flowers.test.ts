@@ -6,7 +6,9 @@ import * as config from '../config';
 
 // Mock dependencies
 vi.mock('../at-client', () => ({
-    listRecords: vi.fn()
+    listRecords: vi.fn(),
+    getRecord: vi.fn(),
+    getProfile: vi.fn()
 }));
 
 vi.mock('../oauth', () => ({

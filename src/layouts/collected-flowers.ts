@@ -1,4 +1,4 @@
-import { listRecords } from '../at-client';
+import { listRecords, getRecord, getProfile } from '../at-client';
 import { getCurrentDid } from '../oauth';
 import { getSiteOwnerDid } from '../config';
 
@@ -38,6 +38,44 @@ export async function renderCollectedFlowers(section) {
       const link = document.createElement('a');
       link.href = `/@${sourceDid}`; // Link back to the source garden
       link.title = `View ${sourceDid}'s garden`;
+
+      // Async fetch of display name and handle
+      (async () => {
+        try {
+          let displayName = sourceDid;
+
+          // Fetch profiles
+          let bskyProfile = null;
+          try {
+            bskyProfile = await getProfile(sourceDid);
+          } catch (e) { /* ignore */ }
+
+          let gardenProfile = null;
+          try {
+            gardenProfile = await getRecord(sourceDid, 'garden.spores.site.profile', 'self');
+          } catch (e) { /* ignore */ }
+
+          // Update URL if handle is available
+          if (bskyProfile?.handle) {
+            link.href = `/@${bskyProfile.handle}`;
+          }
+
+          // Resolve display name: Garden Profile -> Bluesky Display Name -> Bluesky Handle
+          if (gardenProfile?.value?.displayName) {
+            displayName = gardenProfile.value.displayName;
+          } else if (bskyProfile?.displayName) {
+            displayName = bskyProfile.displayName;
+          } else if (bskyProfile?.handle) {
+            displayName = bskyProfile.handle;
+          }
+
+          if (displayName !== sourceDid) {
+            link.title = `View ${displayName}'s garden`;
+          }
+        } catch (e) {
+          console.warn('Failed to resolve metadata for collected flower', e);
+        }
+      })();
 
       const viz = document.createElement('did-visualization');
       viz.setAttribute('did', sourceDid);
