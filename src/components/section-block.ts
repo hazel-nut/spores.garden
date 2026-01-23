@@ -55,11 +55,11 @@ class SectionBlock extends HTMLElement {
     const fragment = document.createDocumentFragment();
 
     // Check if this is a Bluesky post section (hide title in view mode)
-    const isBlueskyPostSection = 
+    const isBlueskyPostSection =
       this.section.collection === 'app.bsky.feed.post' ||
-      (this.section.type === 'records' && this.section.records && 
-       this.section.records.some(uri => uri.includes('app.bsky.feed.post')));
-    
+      (this.section.type === 'records' && this.section.records &&
+        this.section.records.some(uri => uri.includes('app.bsky.feed.post')));
+
     // Section header (title + edit controls)
     // Hide title in view mode for Bluesky posts or if hideHeader is set, but always show in edit mode
     const shouldShowTitle = this.section.title &&
@@ -212,12 +212,12 @@ class SectionBlock extends HTMLElement {
     }
 
     // Edit button only for section types that support editing
-    const supportsEditing = 
-      this.section.type === 'content' || 
-      this.section.type === 'block' || 
+    const supportsEditing =
+      this.section.type === 'content' ||
+      this.section.type === 'block' ||
       this.section.type === 'profile';
     // share-to-bluesky doesn't need editing - it's just a button
-    
+
     if (supportsEditing) {
       const editBtn = document.createElement('button');
       editBtn.className = 'button button-secondary button-small';
@@ -244,12 +244,12 @@ class SectionBlock extends HTMLElement {
         cancelText: 'Cancel',
         confirmDanger: true,
       });
-      
+
       if (confirmed) {
         // If this is a content/block with a PDS record, delete it
-        if ((this.section.type === 'content' || this.section.type === 'block') && 
-            this.section.collection === 'garden.spores.site.content' && 
-            this.section.rkey) {
+        if ((this.section.type === 'content' || this.section.type === 'block') &&
+          this.section.collection === 'garden.spores.site.content' &&
+          this.section.rkey) {
           try {
             const { deleteRecord } = await import('../oauth');
             await deleteRecord('garden.spores.site.content', this.section.rkey);
@@ -259,7 +259,7 @@ class SectionBlock extends HTMLElement {
           }
         }
         removeSection(this.section.id);
-        
+
         // Save the updated sections to PDS
         try {
           await saveConfig();
@@ -267,7 +267,7 @@ class SectionBlock extends HTMLElement {
           console.error('Failed to save sections after deletion:', error);
           // Section is already removed from UI, but may need to be re-added on reload
         }
-        
+
         this.remove();
       }
     });
@@ -284,7 +284,7 @@ class SectionBlock extends HTMLElement {
     } else if (this.section.type === 'records') {
       typeInfo = 'Loading...';
     } else if (this.section.type === 'share-to-bluesky') {
-      typeInfo = 'Share to Bluesky';
+      typeInfo = 'Share on Bluesky';
     } else {
       typeInfo = this.section.type.charAt(0).toUpperCase() + this.section.type.slice(1);
     }
@@ -315,7 +315,7 @@ class SectionBlock extends HTMLElement {
       modal = document.createElement('create-content');
       document.body.appendChild(modal);
     }
-    
+
     // Load existing block data
     const ownerDid = getSiteOwnerDid();
     if (this.section.collection === 'garden.spores.site.content' && this.section.rkey && ownerDid) {
@@ -344,12 +344,12 @@ class SectionBlock extends HTMLElement {
         format: this.section.format || 'text'
       });
     }
-    
+
     modal.setOnClose(() => {
       this.render();
       window.dispatchEvent(new CustomEvent('config-updated'));
     });
-    
+
     modal.show();
   }
 
@@ -360,7 +360,7 @@ class SectionBlock extends HTMLElement {
       modal = document.createElement('create-profile');
       document.body.appendChild(modal);
     }
-    
+
     // Load existing profile data
     const ownerDid = getSiteOwnerDid();
     if (this.section.collection === 'garden.spores.site.profile' && this.section.rkey && ownerDid) {
@@ -406,12 +406,12 @@ class SectionBlock extends HTMLElement {
         banner: ''
       });
     }
-    
+
     modal.setOnClose(() => {
       this.render();
       window.dispatchEvent(new CustomEvent('config-updated'));
     });
-    
+
     modal.show();
   }
 
@@ -431,7 +431,7 @@ class SectionBlock extends HTMLElement {
       // Try to load from profile record first
       let profileData = null;
       let useSporesProfile = false;
-      
+
       if (this.section.collection === 'garden.spores.site.profile' && this.section.rkey) {
         try {
           const record = await getRecord(ownerDid, this.section.collection, this.section.rkey);
@@ -439,17 +439,17 @@ class SectionBlock extends HTMLElement {
             // Convert blob references to URLs if present
             let avatarUrl = null;
             let bannerUrl = null;
-            
+
             if (record.value.avatar && (record.value.avatar.ref || record.value.avatar.$link)) {
               // Avatar is a blob reference - convert to URL
               avatarUrl = await getBlobUrl(ownerDid, record.value.avatar);
             }
-            
+
             if (record.value.banner && (record.value.banner.ref || record.value.banner.$link)) {
               // Banner is a blob reference - convert to URL
               bannerUrl = await getBlobUrl(ownerDid, record.value.banner);
             }
-            
+
             profileData = {
               displayName: record.value.displayName,
               description: record.value.description,
@@ -658,9 +658,9 @@ class SectionBlock extends HTMLElement {
 
     const button = document.createElement('button');
     button.className = 'button button-primary';
-    button.textContent = 'Share to Bluesky';
+    button.textContent = 'Share on Bluesky';
     button.setAttribute('aria-label', 'Share your garden to Bluesky');
-    
+
     // Dispatch custom event that site-app can listen for
     button.addEventListener('click', () => {
       const event = new CustomEvent('share-to-bluesky', {

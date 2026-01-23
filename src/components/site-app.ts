@@ -243,10 +243,10 @@ class SiteApp extends HTMLElement {
         editBtn.addEventListener('click', () => this.editMode ? this.saveAndExitEdit() : this.toggleEditMode());
         controls.appendChild(editBtn);
 
-        // Share to Bluesky button (opens preview modal with post option)
+        // Share on Bluesky button (opens preview modal with post option)
         const shareBtn = document.createElement('button');
         shareBtn.className = 'button button-secondary';
-        shareBtn.textContent = 'Share to Bluesky';
+        shareBtn.textContent = 'Share on Bluesky';
         shareBtn.setAttribute('aria-label', 'Share your garden to Bluesky');
         shareBtn.addEventListener('click', () => this.shareToBluesky());
         controls.appendChild(shareBtn);
@@ -488,7 +488,7 @@ class SiteApp extends HTMLElement {
   async resetGardenData() {
     const confirmReset = await showConfirmModal({
       title: 'Reset Garden Data',
-      message: 'This will delete all garden.spores.* records from localStorage AND your PDS. Are you sure?',
+      message: 'This will delete all your garden data and log you out. Are you sure?',
       confirmText: 'Delete All',
       cancelText: 'Cancel',
       confirmDanger: true,
@@ -575,13 +575,14 @@ class SiteApp extends HTMLElement {
       if (errors.length > 0) {
         message += ` Failed to delete ${errors.length} records.`;
       }
-      message += ' Reloading...';
+      message += ' Logging out...';
 
       this.showNotification(message, errors.length > 0 ? 'error' : 'success');
 
-      // Reload the page after a short delay
+      // Logout and redirect to root after a short delay
       setTimeout(() => {
-        location.reload();
+        logout();
+        location.href = '/';
       }, 2000);
     } catch (error) {
       console.error('Failed to reset garden data:', error);
@@ -612,7 +613,7 @@ class SiteApp extends HTMLElement {
     modal.className = 'modal';
     modal.innerHTML = `
       <div class="modal-content login-modal-content">
-        <h2>Login with Bluesky</h2>
+        <h2>Login with Bluesky or ATProto</h2>
         <form class="login-form">
           <input type="text" placeholder="your.handle.com" class="input" required>
           <button type="submit" class="button">Login</button>
@@ -775,17 +776,7 @@ class SiteApp extends HTMLElement {
 
     // If it's leaflet, create a records section with leaflet layout
     if (type === 'leaflet') {
-      const config = getConfig();
-      const id = `section-${Date.now()}`;
-      const section = {
-        id,
-        type: 'records',
-        layout: 'leaflet',
-        title: 'Leaflet Posts',
-        records: [] // User can add leaflet.pub article records via Load Records or section editing
-      };
-      config.sections = [...(config.sections || []), section];
-      this.render();
+      this.showLeafletSelector();
       return;
     }
 
@@ -926,7 +917,7 @@ class SiteApp extends HTMLElement {
     modal.className = 'modal share-modal';
     modal.innerHTML = `
       <div class="modal-content" style="max-width: 800px;">
-        <h2>Share to Bluesky</h2>
+        <h2>Share on Bluesky</h2>
         <div class="share-modal-body">
           <div class="share-preview-loading">
             <div class="loading-spinner"></div>
@@ -934,7 +925,7 @@ class SiteApp extends HTMLElement {
           </div>
         </div>
         <div class="modal-actions">
-          <button class="button button-primary share-confirm-btn" disabled>Share to Bluesky</button>
+          <button class="button button-primary share-confirm-btn" disabled>Share on Bluesky</button>
           <button class="button button-secondary modal-close">Cancel</button>
         </div>
       </div>
@@ -1287,6 +1278,151 @@ class SiteApp extends HTMLElement {
         type: 'records',
         layout: 'smoke-signal',
         title: sectionTitle,
+        records: uris
+      };
+      config.sections = [...(config.sections || []), section];
+
+      modal.remove();
+      this.render();
+    });
+
+    modal.querySelector('.modal-close')?.addEventListener('click', () => modal.remove());
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) modal.remove();
+    });
+  }
+
+  async showLeafletSelector() {
+    const currentDid = getCurrentDid();
+    if (!currentDid) return;
+
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.innerHTML = `
+      <div class="modal-content">
+        <div class="welcome-loading">
+          <div class="spinner"></div>
+          <p>Loading leaflet publications...</p>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+
+    try {
+      const { getCollectionRecords } = await import('../records/loader');
+      const collections = ['site.standard.document', 'pub.leaflet.document'];
+
+      const recordSets = await Promise.all(collections.map(async (collection) => {
+        try {
+          const records = await getCollectionRecords(currentDid, collection, { limit: 50 });
+          return records.map(record => ({ ...record, _collection: collection }));
+        } catch (error) {
+          console.warn(`Failed to load ${collection} records:`, error);
+          return [];
+        }
+      }));
+
+      const records = recordSets.flat();
+      const seen = new Set<string>();
+      const uniqueRecords = records.filter(record => {
+        const key = record.uri || `${record._collection}:${record.cid || ''}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+
+      if (uniqueRecords.length === 0) {
+        modal.innerHTML = `
+          <div class="modal-content">
+            <h2>No Publications Found</h2>
+            <p>You don't have any leaflet publications yet.</p>
+            <p style="font-size: 0.9em; color: var(--text-muted);">
+              Collections checked: <code>site.standard.document</code>, <code>pub.leaflet.document</code>
+            </p>
+            <button class="button button-secondary modal-close">Close</button>
+          </div>
+        `;
+        modal.querySelector('.modal-close')?.addEventListener('click', () => modal.remove());
+        modal.addEventListener('click', (e) => {
+          if (e.target === modal) modal.remove();
+        });
+        return;
+      }
+
+      this.showLeafletRecordSelector(modal, uniqueRecords);
+    } catch (error) {
+      console.error('Failed to load leaflet records:', error);
+      modal.innerHTML = `
+        <div class="modal-content">
+          <h2>Error</h2>
+          <p>Failed to load leaflet records: ${error instanceof Error ? error.message : 'Unknown error'}</p>
+          <button class="button button-secondary modal-close">Close</button>
+        </div>
+      `;
+      modal.querySelector('.modal-close')?.addEventListener('click', () => modal.remove());
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) modal.remove();
+      });
+    }
+  }
+
+  showLeafletRecordSelector(modal: HTMLElement, records: any[]) {
+    modal.innerHTML = `
+      <div class="modal-content">
+        <h2>Select Leaflet Publications</h2>
+        <p>Choose which leaflet.pub articles to display on your garden</p>
+        <div class="record-list" style="max-height: 400px; overflow-y: auto; margin: 1rem 0;">
+          ${records.map((record, idx) => {
+      const rkey = record.uri?.split('/').pop() || idx.toString();
+      const value = record.value || {};
+      const title = value.title || 'Untitled Article';
+      let subtitle = '';
+      if (value.publishedAt) {
+        try {
+          subtitle = new Date(value.publishedAt).toLocaleDateString();
+        } catch {
+          subtitle = value.publishedAt;
+        }
+      }
+      return `
+              <label class="record-item" style="display: flex; align-items: center; padding: 0.75rem; border: 1px solid var(--border); border-radius: 4px; margin-bottom: 0.5rem; cursor: pointer;">
+                <input type="checkbox" value="${rkey}" data-uri="${record.uri || ''}" style="margin-right: 0.75rem;">
+                <div>
+                  <div style="font-weight: 500;">${this.escapeHtmlAttr(title)}</div>
+                  ${subtitle ? `<div style="font-size: 0.85em; color: var(--text-muted);">${this.escapeHtmlAttr(subtitle)}</div>` : ''}
+                </div>
+              </label>
+            `;
+    }).join('')}
+        </div>
+        <div class="modal-actions" style="display: flex; gap: 0.5rem; justify-content: flex-end;">
+          <button class="button button-primary" data-action="add-selected">Add Selected</button>
+          <button class="button button-secondary modal-close">Cancel</button>
+        </div>
+      </div>
+    `;
+
+    modal.querySelector('[data-action="add-selected"]')?.addEventListener('click', () => {
+      const selected = Array.from(modal.querySelectorAll<HTMLInputElement>('.record-item input:checked'));
+
+      if (selected.length === 0) {
+        alert('Please select at least one publication.');
+        return;
+      }
+
+      const uris = selected.map(input => input.getAttribute('data-uri')).filter(Boolean) as string[];
+      if (uris.length === 0) {
+        alert('Selected publications are missing URIs.');
+        return;
+      }
+
+      const config = getConfig();
+      const id = `section-${Date.now()}`;
+      const section = {
+        id,
+        type: 'records',
+        layout: 'leaflet',
+        title: 'Leaflet Posts',
         records: uris
       };
       config.sections = [...(config.sections || []), section];
