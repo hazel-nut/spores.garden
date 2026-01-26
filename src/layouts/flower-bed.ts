@@ -342,26 +342,29 @@ async function showSporeDetailsModal(originGardenDid: string) {
     ? allRecords[allRecords.length - 1].ownerDid 
     : originGardenDid;
 
-  // Build lineage from records
+  // Build lineage from ALL records (every capture event, including re-steals)
   const lineage: Array<{did: string; timestamp?: string; isOrigin?: boolean; isCurrent?: boolean}> = [];
-  
-  // Origin is always first (may or may not have a record if never stolen)
-  const originRecord = allRecords.find(r => r.ownerDid === originGardenDid);
-  lineage.push({
-    did: originGardenDid,
-    timestamp: originRecord?.capturedAt,
-    isOrigin: true,
-    isCurrent: currentHolderDid === originGardenDid
-  });
 
-  // Add all other holders (skip origin if already added)
-  for (const record of allRecords) {
-    if (record.ownerDid === originGardenDid) continue;
+  for (let i = 0; i < allRecords.length; i++) {
+    const record = allRecords[i];
+    const isFirst = i === 0;
+    const isLast = i === allRecords.length - 1;
+
     lineage.push({
       did: record.ownerDid,
       timestamp: record.capturedAt,
-      isOrigin: false,
-      isCurrent: record.ownerDid === currentHolderDid && record === allRecords[allRecords.length - 1]
+      isOrigin: isFirst,  // First chronological record = origin
+      isCurrent: isLast   // Last chronological record = current holder
+    });
+  }
+
+  // If origin has no record yet (never stolen, validated by isValidSpore),
+  // ensure origin appears first
+  if (lineage.length === 0 || lineage[0].did !== originGardenDid) {
+    lineage.unshift({
+      did: originGardenDid,
+      isOrigin: true,
+      isCurrent: currentHolderDid === originGardenDid
     });
   }
 
@@ -400,7 +403,8 @@ async function showSporeDetailsModal(originGardenDid: string) {
     const isFirst = index === 0;
     
     let label = '';
-    if (entry.isOrigin) label = '🌱 Origin';
+    if (entry.isOrigin && entry.isCurrent) label = '🌱 Origin · Current Holder';
+    else if (entry.isOrigin) label = '🌱 Origin';
     else if (entry.isCurrent) label = '✨ Current Holder';
     else label = '🌿 Visited';
     
