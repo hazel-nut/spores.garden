@@ -4,42 +4,21 @@
   "defs": {
     "main": {
       "type": "record",
-      "description": "A special spore item that can be collected and stolen by other users. All spore records reference the origin garden DID via backlinks to enable capture-the-flag mechanics.",
-      "key": "self",
+      "description": "A special spore capture record. Each steal creates a new record with a TID key. Current holder is determined by the most recent createdAt timestamp across all backlinked records for a given origin (subject).",
+      "key": "tid",
       "record": {
         "type": "object",
-        "required": ["subject", "ownerDid", "originGardenDid", "lastCapturedAt", "history"],
+        "required": ["subject", "createdAt"],
         "properties": {
           "subject": {
             "type": "string",
             "format": "did",
-            "description": "DID of the origin garden (same as originGardenDid). Used for backlink indexing."
+            "description": "Origin garden DID. Used for backlink indexing to find all captures of this spore."
           },
-          "ownerDid": {
-            "type": "string",
-            "format": "did",
-            "description": "DID of the current holder of the spore"
-          },
-          "originGardenDid": {
-            "type": "string",
-            "format": "did",
-            "description": "DID of the garden where this spore originated. All spore records reference this DID via backlinks."
-          },
-          "lastCapturedAt": {
+          "createdAt": {
             "type": "string",
             "format": "datetime",
-            "description": "Timestamp when this record was created (when spore was captured by current holder)"
-          },
-          "history": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "required": ["did", "timestamp"],
-              "properties": {
-                "did": { "type": "string", "format": "did" },
-                "timestamp": { "type": "string", "format": "datetime" }
-              }
-            }
+            "description": "When this capture occurred."
           }
         }
       }
