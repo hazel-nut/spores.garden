@@ -352,16 +352,6 @@ export class SiteEditor {
       btn.addEventListener('click', async () => {
         const uri = btn.getAttribute('data-uri');
         if (uri) {
-          const { addSection } = await import('../config'); // Wait, I am implementing addSection here. Using it directly.
-          // The utility in ../config was likely not what I wanted. I want THIS classes addSection or addSectionToConfig.
-          // But wait, `addSection` calls `getConfig().sections.push(...)`.
-          // `site-app.ts` imported `addSection` from `../config` in this method line 1025.
-          // Let's check `../config`.
-          // If `site-app.ts` was using `../config`'s addSection, why did it have its own `addSection` method?
-          // Line 1026: `addSection({ type: 'records', records: [uri], layout: 'post' });`
-          // The `addSection` from `../config` might be a simple config pusher.
-          // Let's use `this.addSectionToConfig` logic manually here.
-
           const config = getConfig();
           const id = `section-${Date.now()}`;
           const section = {

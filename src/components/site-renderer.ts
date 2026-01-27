@@ -179,19 +179,6 @@ export class SiteRenderer {
             } catch (err) {
                 console.error("Failed to load header spores", err);
             }
-            /*
-              // Spore badge - floating UI for spore steal mechanics (only on profile pages)
-              if (!isHomePage) {
-                // Remove any existing spore badge before adding new one
-                const existingBadge = document.querySelector('spore-badge');
-                if (existingBadge) existingBadge.remove();
-      
-                const sporeBadge = document.createElement('spore-badge');
-                document.body.appendChild(sporeBadge);
-              }
-            */
-            // It was appending to body!
-            // I will preserve that behavior for now.
         }
 
         leftGroup.appendChild(titleContainer);

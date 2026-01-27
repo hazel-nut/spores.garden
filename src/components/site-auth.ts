@@ -61,19 +61,6 @@ export class SiteAuth {
                 // User has existing config - set as owner and don't show welcome
                 setSiteOwnerDid(detail.did);
 
-                // Only apply user's theme if viewing their own garden (which they are if they just set it)
-                // But we must check if we are on a profile page or if site router says so
-                // Actually, if !currentSiteOwner initially, we were likely on home page.
-                // But after setting owner, we might be "viewing own garden" conceptually if we redirect?
-                // Original logic:
-                /*
-                if (this.isViewingOwnGarden(detail.did)) {
-                   await applyTheme(existingConfig.theme);
-                }
-                */
-                // Here we can just check if we are viewing a profile that matches the DID, OR if we are on root and treated as owner?
-                // SiteRouter.isViewingProfile() would return false on root.
-
                 if (SiteRouter.isViewingProfile() && getSiteOwnerDid() === detail.did) {
                     await applyTheme(existingConfig.theme);
                 }
