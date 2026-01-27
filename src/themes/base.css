@@ -1071,7 +1071,6 @@ site-app.theme-ready .header {
   flex-direction: column;
   gap: var(--spacing-md);
   margin-bottom: 0;
-  padding: var(--spacing-md);
 }
 
 .form-group {
@@ -1083,6 +1082,10 @@ site-app.theme-ready .header {
   .modal-content .form-group,
   .take-seed-form {
     padding: 0 var(--spacing-md);
+  }
+
+  .login-form {
+    padding: var(--spacing-md);
   }
 }
 
