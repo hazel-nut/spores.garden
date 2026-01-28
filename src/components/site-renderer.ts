@@ -1,5 +1,6 @@
 import { getConfig, getSiteOwnerDid, isOwner } from '../config';
 import { isLoggedIn, getCurrentDid, logout } from '../oauth';
+import { escapeHtml } from '../utils/sanitize';
 import { SiteRouter } from './site-router';
 import { generateFlowerSVGString, generateSporeFlowerSVGString } from '../utils/flower-svg';
 import { showSporeDetailsModal } from './spore-modal';
@@ -139,7 +140,7 @@ export class SiteRenderer {
                 // However, the prompt says "Move the display... to the header".
                 // If I render it here, I should make sure it looks good.
 
-                if (ownerDid) {
+                if (ownerDid && !isHomePage) {
                     // Optimization: perform this check asynchronously and update DOM to avoid blocking render?
                     // However, for simplicity and ensuring it appears with header, we await it or allow it to pop in.
                     // Since render() is async, we can await it, but it might delay TTI.
@@ -160,9 +161,10 @@ export class SiteRenderer {
                                 const sporeEl = document.createElement('div');
                                 sporeEl.title = 'Special Spore';
                                 sporeEl.style.cursor = 'pointer';
-                                sporeEl.style.width = '48px';
-                                sporeEl.style.height = '48px';
-                                sporeEl.innerHTML = generateSporeFlowerSVGString(spore.originGardenDid, 48);
+                                sporeEl.style.width = '60px';
+                                sporeEl.style.height = '60px';
+                                sporeEl.style.flexShrink = '0';
+                                sporeEl.innerHTML = generateSporeFlowerSVGString(spore.originGardenDid, 60);
 
                                 sporeEl.addEventListener('click', (e) => {
                                     e.stopPropagation();
@@ -506,7 +508,7 @@ export class SiteRenderer {
         notification.className = `notification notification-${type}`;
         notification.innerHTML = `
       <div class="notification-content">
-        <span class="notification-message">${this.escapeHtml(message)}</span>
+        <span class="notification-message">${escapeHtml(message)}</span>
         <button class="notification-close" aria-label="Close">×</button>
       </div>
     `;
@@ -589,11 +591,5 @@ export class SiteRenderer {
          <circle cx="0" cy="0" r="0.8" fill="${color}"/>
        </g>
      </svg>`;
-    }
-
-    private escapeHtml(text: string): string {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
     }
 }

@@ -41,7 +41,8 @@ class SiteApp extends HTMLElement {
 
     this.auth = new SiteAuth(
       renderCallback,
-      (type) => this.editor.showAddSectionModal(type)
+      (type) => this.editor.showAddSectionModal(type),
+      showNotification
     );
 
     this.renderer = new SiteRenderer(

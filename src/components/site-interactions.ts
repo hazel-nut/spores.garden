@@ -1,6 +1,7 @@
 import { getSiteOwnerDid } from '../config';
 import { isLoggedIn, getCurrentDid, createRecord, uploadBlob, post } from '../oauth';
 import { listRecords, getBacklinks } from '../at-client';
+import { escapeHtml } from '../utils/sanitize';
 import { generateSocialCardImage } from '../utils/social-card';
 
 /**
@@ -234,7 +235,7 @@ export class SiteInteractions {
             console.error('Failed to generate social card preview:', error);
             modalBody.innerHTML = `
         <div class="share-error">
-          <p style="color: var(--error-color);">Failed to generate preview: ${this.escapeHtml(error.message)}</p>
+          <p style="color: var(--error-color);">Failed to generate preview: ${escapeHtml(error.message)}</p>
         </div>
       `;
             return;
@@ -306,7 +307,7 @@ export class SiteInteractions {
                 console.error('Failed to share to Bluesky:', error);
                 modalBody.innerHTML = `
           <div class="share-error">
-            <p style="color: var(--error-color);">Failed to share: ${this.escapeHtml(error.message)}</p>
+            <p style="color: var(--error-color);">Failed to share: ${escapeHtml(error.message)}</p>
           </div>
         `;
                 confirmBtn.disabled = false;
@@ -353,11 +354,5 @@ export class SiteInteractions {
             console.error('Failed to check taken seeds:', error);
             return false;
         }
-    }
-
-    private escapeHtml(text: string): string {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
     }
 }

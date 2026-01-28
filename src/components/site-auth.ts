@@ -12,13 +12,16 @@ export class SiteAuth {
     private hasShownWelcome = false;
     private renderCallback: () => void;
     private showAddSectionModalCallback: (preferredType?: string) => void;
+    private showNotification?: (msg: string, type?: 'success' | 'error') => void;
 
     constructor(
         renderCallback: () => void,
-        showAddSectionModalCallback: (preferredType?: string) => void
+        showAddSectionModalCallback: (preferredType?: string) => void,
+        showNotification?: (msg: string, type?: 'success' | 'error') => void
     ) {
         this.renderCallback = renderCallback;
         this.showAddSectionModalCallback = showAddSectionModalCallback;
+        this.showNotification = showNotification;
     }
 
     /**
@@ -50,6 +53,11 @@ export class SiteAuth {
     }
 
     private async handleAuthChange(detail: any) {
+        // Session expired (401/403 from PDS): show message and rely on auth-change to re-render logged out
+        if (detail?.reason === 'expired' && this.showNotification) {
+            this.showNotification('Session expired, please log in again.', 'error');
+        }
+
         // If user logged in and no site owner set (home page), they become the owner
         const currentSiteOwner = getSiteOwnerDid();
 

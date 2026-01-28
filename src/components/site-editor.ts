@@ -1,7 +1,9 @@
 import { getConfig, saveConfig, getSiteOwnerDid, setSiteOwnerDid } from '../config';
 import { getCurrentDid, putRecord, uploadBlob, createRecord, post, isLoggedIn } from '../oauth';
 import { getRecord, getProfile } from '../at-client';
+import { escapeHtml } from '../utils/sanitize';
 import { SiteRouter } from './site-router';
+import './create-content';
 
 /**
  * Manages edit mode, section addition workflows, and content creation.
@@ -337,7 +339,7 @@ export class SiteEditor {
       return `
               <button class="post-item-selectable" data-uri="${uri}">
                 <div class="post-content">
-                  <p class="post-text">${this.escapeHtml(text)}${text.length >= 200 ? '...' : ''}</p>
+                  <p class="post-text">${escapeHtml(text)}${text.length >= 200 ? '...' : ''}</p>
                   ${createdAt ? `<time class="post-date">${createdAt}</time>` : ''}
                 </div>
               </button>
@@ -479,7 +481,7 @@ export class SiteEditor {
       return `
               <label class="record-item">
                 <input type="checkbox" value="${rkey}" data-uri="${record.uri || ''}">
-                <span class="record-title">${this.escapeHtml(title)}</span>
+                <span class="record-title">${escapeHtml(title)}</span>
               </label>
             `;
     }).join('')}
@@ -700,8 +702,8 @@ export class SiteEditor {
               <label class="record-item" style="display: flex; align-items: center; padding: 0.75rem; border: 1px solid var(--border); border-radius: 4px; margin-bottom: 0.5rem; cursor: pointer;">
                 <input type="checkbox" value="${rkey}" data-uri="${record.uri || ''}" style="margin-right: 0.75rem;">
                 <div>
-                  <div style="font-weight: 500;">${this.escapeHtml(title)}</div>
-                  ${subtitle ? `<div style="font-size: 0.85em; color: var(--text-muted);">${this.escapeHtml(subtitle)}</div>` : ''}
+                  <div style="font-weight: 500;">${escapeHtml(title)}</div>
+                  ${subtitle ? `<div style="font-size: 0.85em; color: var(--text-muted);">${escapeHtml(subtitle)}</div>` : ''}
                 </div>
               </label>
             `;
@@ -835,8 +837,8 @@ export class SiteEditor {
               <label class="record-item" style="display: flex; align-items: center; padding: 0.75rem; border: 1px solid var(--border); border-radius: 4px; margin-bottom: 0.5rem; cursor: pointer;">
                 <input type="checkbox" value="${rkey}" data-uri="${record.uri || ''}" style="margin-right: 0.75rem;">
                 <div>
-                  <div style="font-weight: 500;">${this.escapeHtml(title)}</div>
-                  ${subtitle ? `<div style="font-size: 0.85em; color: var(--text-muted);">${this.escapeHtml(subtitle)}</div>` : ''}
+                  <div style="font-weight: 500;">${escapeHtml(title)}</div>
+                  ${subtitle ? `<div style="font-size: 0.85em; color: var(--text-muted);">${escapeHtml(subtitle)}</div>` : ''}
                 </div>
               </label>
             `;
@@ -908,11 +910,5 @@ export class SiteEditor {
     });
 
     modal.show();
-  }
-
-  private escapeHtml(text: string): string {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
   }
 }
