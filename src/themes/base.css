@@ -292,7 +292,6 @@ site-app.theme-ready .header {
   font-weight: 800;
   color: var(--color-text);
   letter-spacing: -0.03em;
-  text-transform: uppercase;
 }
 
 .site-subtitle {
@@ -301,7 +300,6 @@ site-app.theme-ready .header {
   margin: 0;
   margin-top: 0.25rem;
   color: var(--color-text-muted);
-  text-transform: none;
   letter-spacing: 0.05em;
 }
 
@@ -322,7 +320,6 @@ site-app.theme-ready .header {
   font-size: var(--font-size-xl);
   font-weight: 800;
   letter-spacing: -0.03em;
-  text-transform: uppercase;
   padding: var(--spacing-xs) var(--spacing-sm);
   margin: 0;
 }
@@ -331,7 +328,6 @@ site-app.theme-ready .header {
   font-size: 0.98rem;
   font-weight: 500;
   letter-spacing: 0.05em;
-  text-transform: none;
   padding: var(--spacing-xs) var(--spacing-sm);
   margin-top: 0.25rem;
   color: var(--color-text-muted);
@@ -570,7 +566,6 @@ site-app.theme-ready .header {
   margin: 0;
   font-size: var(--font-size-lg);
   font-weight: 800;
-  text-transform: uppercase;
   letter-spacing: -0.02em;
 }
 
@@ -1146,7 +1141,6 @@ site-app.theme-ready .header {
 .modal-content h2 {
   margin-top: 0;
   margin-bottom: var(--spacing-lg);
-  text-transform: uppercase;
 }
 
 .modal-close {
@@ -1735,7 +1729,6 @@ site-app.theme-ready .header {
   text-align: center;
   font-size: 2rem;
   margin-bottom: var(--spacing-lg);
-  text-transform: uppercase;
   letter-spacing: -0.05em;
 }
 
@@ -1788,7 +1781,6 @@ site-app.theme-ready .header {
 .welcome-card-content h3 {
   margin: 0 0 var(--spacing-sm);
   font-size: 1.25rem;
-  text-transform: uppercase;
   letter-spacing: 0.05em;
 }
 
@@ -1897,7 +1889,6 @@ site-app.theme-ready .header {
 
 .welcome-selector h2 {
   margin-bottom: var(--spacing-sm);
-  text-transform: uppercase;
 }
 
 .welcome-selector p {
@@ -2016,7 +2007,6 @@ site-app.theme-ready .header {
 .template-card h3 {
   margin: 0 0 var(--spacing-xs);
   font-size: 1.25rem;
-  text-transform: uppercase;
   letter-spacing: 0.05em;
 }
 
@@ -2074,7 +2064,6 @@ site-app.theme-ready .header {
   font-size: 1.25rem;
   font-weight: 800;
   color: var(--color-text);
-  text-transform: uppercase;
   letter-spacing: -0.02em;
 }
 
@@ -2633,7 +2622,6 @@ site-app.theme-ready .header {
   font-size: 1.5rem;
   font-weight: 800;
   margin: 0;
-  text-transform: uppercase;
   letter-spacing: -0.02em;
 }
 
@@ -2933,7 +2921,6 @@ site-app.theme-ready .header {
 .site-config-header h3 {
   margin: 0;
   font-size: 1rem;
-  text-transform: uppercase;
   letter-spacing: 0.05em;
 }
 
@@ -3320,7 +3307,6 @@ site-app.theme-ready .header {
   font-size: 1.5rem;
   font-weight: 800;
   margin-bottom: var(--spacing-md);
-  text-transform: uppercase;
   letter-spacing: -0.02em;
 }
 
