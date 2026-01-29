@@ -74,7 +74,7 @@ export class SiteRenderer {
         leftGroup.className = 'header-left';
         leftGroup.style.display = 'flex';
         leftGroup.style.flexWrap = 'wrap';
-        leftGroup.style.alignItems = 'center';
+        leftGroup.style.alignItems = 'self-start';
         leftGroup.style.gap = '1rem';
 
         // Home button with dandelion icon
