@@ -24,12 +24,13 @@ interface GardenMetadata {
   updateType?: 'flower' | 'seedling' | 'edit' | 'spore';
 }
 
-// Seed gardens for bootstrapping discovery
+// Hypha's own gardens for bootstrapping discovery
 // These are known active gardens that help kickstart the discovery network
 const SEED_GARDENS = [
+  'did:plc:hkjuufd7obvrorwc4fjynbwr', // andia.bsky.social
   'did:plc:y3lae7hmqiwyq7w2v3bcb2c2', // charlebois.info
-  'did:plc:2qt2kdxo6viizgglawlm4l3n', // lexa.fyi
   'did:plc:rxduhzsfgfpl2glle7vagcwl', // hypha.coop
+  'did:plc:2qt2kdxo6viizgglawlm4l3n', // lexa.fyi
   'did:plc:gspui4hkqdes4maykfp7cm5y', // udit.bsky.social
 
 ];

@@ -3389,7 +3389,6 @@ site-app.theme-ready .header {
   border: none;
   box-shadow: none;
   background: transparent;
-  border-bottom: 1px solid var(--color-border, #e0e0e0);
 }
 
 /* Remove decorative border for header strip */
@@ -3408,8 +3407,8 @@ site-app.theme-ready .header {
 
 /* Adjust flower size for header strip */
 .flower-bed.header-strip .flower-grid-item {
-  width: 60px;
-  height: 60px;
+  width: 48px;
+  height: 48px;
   flex-shrink: 0;
   transition: transform 0.2s ease;
 }
@@ -3419,21 +3418,21 @@ site-app.theme-ready .header {
 }
 
 .flower-bed.header-strip .flower-grid-item did-visualization {
-  width: 60px;
-  height: 60px;
-  max-width: 60px;
+  width: 48px;
+  height: 48px;
+  max-width: 48px;
 }
 
 .flower-bed.header-strip .flower-grid-item did-visualization svg {
-  width: 60px;
-  height: 60px;
+  width: 48px;
+  height: 48px;
 }
 
 /* Header strip CTA button */
 .header-strip-cta {
-  /* Slightly smaller than 60px flowers on desktop */
-  height: 48px;
-  margin: 8px 0;
+  /* Slightly smaller than 48px flowers on desktop */
+  height: 44px;
+  margin: 2px 0;
   padding: 0 1rem;
   font-size: 0.8rem;
   font-weight: 600;
