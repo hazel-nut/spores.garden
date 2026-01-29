@@ -396,16 +396,16 @@ export class SiteRenderer {
             const preview = document.createElement('div');
             preview.className = 'garden-preview';
 
+            const heading = document.createElement('h2');
+            heading.className = 'garden-preview__heading';
+            heading.textContent = "A garden could grow here.";
+            preview.appendChild(heading);
+
             const flowerBox = document.createElement('div');
             flowerBox.className = 'garden-preview__flower-box';
             const flowerSize = 140;
             flowerBox.innerHTML = generateFlowerSVGString(ownerDid!, flowerSize);
             preview.appendChild(flowerBox);
-
-            const heading = document.createElement('h2');
-            heading.className = 'garden-preview__heading';
-            heading.textContent = "A garden could grow here.";
-            preview.appendChild(heading);
 
             const subtext = document.createElement('p');
             subtext.className = 'garden-preview__subtext';
