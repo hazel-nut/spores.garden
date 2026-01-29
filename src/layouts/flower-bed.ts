@@ -234,7 +234,6 @@ function createDisabledGardenButton(
   const primary = document.createElement('div');
   primary.style.fontWeight = '700';
   primary.style.fontSize = '0.875rem';
-  primary.style.textTransform = 'uppercase';
   primary.style.letterSpacing = '0.02em';
   primary.textContent = `Visit ${gardenHandle}'s garden`;
   textWrap.appendChild(primary);
@@ -300,7 +299,6 @@ function createGardenLink(
   const primary = document.createElement('div');
   primary.style.fontWeight = '700';
   primary.style.fontSize = '0.875rem';
-  primary.style.textTransform = 'uppercase';
   primary.style.letterSpacing = '0.02em';
   primary.textContent = `Visit ${gardenHandle}'s garden`;
   textWrap.appendChild(primary);
