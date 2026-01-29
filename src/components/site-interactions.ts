@@ -3,6 +3,7 @@ import { isLoggedIn, getCurrentDid, createRecord, uploadBlob, post } from '../oa
 import { listRecords, getBacklinks } from '../at-client';
 import { escapeHtml } from '../utils/sanitize';
 import { generateSocialCardImage } from '../utils/social-card';
+import { renderFlowerBed } from '../layouts/flower-bed';
 
 /**
  * Handles social interactions like planting flowers, taking seeds, and sharing.
@@ -36,26 +37,35 @@ export class SiteInteractions {
                 subject: ownerDid,
                 createdAt: new Date().toISOString()
             });
-            this.showNotification('You planted a flower! It will appear in the Flower Bed section.', 'success');
+            this.showNotification('You planted a flower!.', 'success');
 
-            // Update button state directly without re-rendering the whole page (to avoid flicker)
-            const btn = this.app.querySelector('.plant-flower-btn') as HTMLButtonElement;
-            if (btn) {
-                btn.textContent = 'Already planted';
-                btn.disabled = true;
-                btn.setAttribute('aria-label', 'You have already planted a flower in this garden');
-                btn.title = 'You have already planted a flower in this garden';
-            }
-
-            // Refresh only the flower bed sections
-            const sections = this.app.querySelectorAll('section-block');
-            sections.forEach(section => {
-                // Access existing section type - need to check if we can access the data
-                if (section.getAttribute('data-type') === 'flower-bed') {
-                    // Force re-render of just this section
-                    (section as any).render();
+            // Refresh the header strip (create if it doesn't exist)
+            const headerStrip = this.app.querySelector('.flower-bed.header-strip') as HTMLElement;
+            const newHeaderStrip = await renderFlowerBed({}, true);
+            
+            if (newHeaderStrip) {
+                if (headerStrip) {
+                    // Replace the old header strip with the new one
+                    headerStrip.replaceWith(newHeaderStrip);
+                } else {
+                    // Header strip doesn't exist yet, create it
+                    const main = this.app.querySelector('main');
+                    if (main) {
+                        this.app.insertBefore(newHeaderStrip, main);
+                    } else {
+                        this.app.appendChild(newHeaderStrip);
+                    }
                 }
-            });
+            } else if (headerStrip) {
+                // If no flowers to show, remove the header strip
+                headerStrip.remove();
+            }
+            
+            // Remove the CTA button if it exists (user has now planted)
+            const ctaButton = this.app.querySelector('.header-strip-cta') as HTMLElement;
+            if (ctaButton) {
+                ctaButton.remove();
+            }
         } catch (error) {
             console.error('Failed to plant flower:', error);
             this.showNotification(`Failed to plant flower: ${error.message}`, 'error');

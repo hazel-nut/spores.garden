@@ -8,7 +8,6 @@ import { getCollectionRecords, getRecordsByUris } from '../records/loader';
 import { getSiteOwnerDid, getConfig, updateSection, removeSection, moveSectionUp, moveSectionDown, saveConfig } from '../config';
 import { getProfile, getRecord, getBlobUrl } from '../at-client';
 import { renderRecord, getAvailableLayouts } from '../layouts/index';
-import { renderFlowerBed } from '../layouts/flower-bed';
 import { renderCollectedFlowers } from '../layouts/collected-flowers';
 import { createErrorMessage, createLoadingSpinner } from '../utils/loading-states';
 import { showConfirmModal } from '../utils/confirm-modal';
@@ -111,12 +110,6 @@ class SectionBlock extends HTMLElement {
         case 'records':
           await this.renderRecords(content);
           break;
-        case 'flower-bed': {
-          const rendered = await renderFlowerBed(this.section);
-          content.innerHTML = '';
-          content.appendChild(rendered);
-          break;
-        }
         case 'collected-flowers': {
           const rendered = await renderCollectedFlowers(this.section);
           content.innerHTML = '';

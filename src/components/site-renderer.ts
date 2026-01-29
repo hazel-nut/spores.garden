@@ -4,6 +4,7 @@ import { escapeHtml } from '../utils/sanitize';
 import { SiteRouter } from './site-router';
 import { generateFlowerSVGString, generateSporeFlowerSVGString } from '../utils/flower-svg';
 import { showSporeDetailsModal } from './spore-modal';
+import { renderFlowerBed } from '../layouts/flower-bed';
 import type { SiteAuth } from './site-auth';
 import type { SiteEditor } from './site-editor';
 import type { SiteInteractions } from './site-interactions';
@@ -224,12 +225,9 @@ export class SiteRenderer {
                     controls.appendChild(viewMyGardenBtn);
                 }
             } else if (!isOwnerLoggedIn && isViewingProfile) {
-                // Check if user already interacted with this garden
+                // Check if user already took a seed from this garden
                 const currentDid = getCurrentDid();
-                const [hasPlantedFlower, hasTakenSeed] = await Promise.all([
-                    this.interactions.checkHasPlantedFlower(ownerDid!, currentDid),
-                    this.interactions.checkHasTakenSeed(currentDid, ownerDid!)
-                ]);
+                const hasTakenSeed = await this.interactions.checkHasTakenSeed(currentDid, ownerDid!);
 
                 // Guard against race conditions
                 if (this.renderId !== myRenderId) return;
@@ -245,22 +243,6 @@ export class SiteRenderer {
                     });
                     controls.appendChild(viewMyGardenBtn);
                 }
-
-                // "Plant a flower" button for visitors
-                const plantFlowerBtn = document.createElement('button');
-                plantFlowerBtn.className = 'button button-primary plant-flower-btn';
-                if (hasPlantedFlower) {
-                    plantFlowerBtn.textContent = 'Already planted';
-                    plantFlowerBtn.disabled = true;
-                    plantFlowerBtn.setAttribute('aria-label', 'You have already planted a flower in this garden');
-                    plantFlowerBtn.title = 'You have already planted a flower in this garden';
-                } else {
-                    plantFlowerBtn.textContent = 'Plant a flower';
-                    plantFlowerBtn.setAttribute('aria-label', 'Plant a flower in this garden');
-                    plantFlowerBtn.title = 'Leave your unique flower in this garden as a way to show appreciation';
-                    plantFlowerBtn.addEventListener('click', () => this.interactions.plantFlower());
-                }
-                controls.appendChild(plantFlowerBtn);
 
                 // "Take a seed" button for visitors
                 const takeFlowerBtn = document.createElement('button');
@@ -355,6 +337,11 @@ export class SiteRenderer {
         header.appendChild(controls);
         this.app.appendChild(header);
 
+        // Flower bed header strip (shows visitor flowers under header)
+        if (!isHomePage) {
+            this.renderFlowerBedHeaderStrip(myRenderId, ownerDid, isOwnerLoggedIn);
+        }
+
         // Main content
         const main = document.createElement('main');
         main.className = 'main';
@@ -441,7 +428,13 @@ export class SiteRenderer {
             main.appendChild(emptyState);
         } else {
             // Viewing a profile with sections
-            for (const section of sections) {
+            // Filter out deprecated section types (they're handled elsewhere)
+            const activeSections = sections.filter(section => {
+                // flower-bed sections are now rendered as a header strip, skip them here
+                return section.type !== 'flower-bed';
+            });
+
+            for (const section of activeSections) {
                 const sectionEl = document.createElement('section-block');
                 sectionEl.setAttribute('data-section', JSON.stringify(section));
                 sectionEl.setAttribute('data-edit-mode', this.editor.editMode.toString());
@@ -496,6 +489,73 @@ export class SiteRenderer {
             devResetBtn.addEventListener('click', () => this.data.resetGardenData());
             this.app.appendChild(devResetBtn);
         }
+    }
+
+    /**
+     * Renders the flower bed header strip (shows visitor flowers under header).
+     * This replaces the old flower-bed section type.
+     */
+    private renderFlowerBedHeaderStrip(
+        myRenderId: number,
+        ownerDid: string | null,
+        isOwnerLoggedIn: boolean
+    ): void {
+        if (!ownerDid) return;
+
+        // Render asynchronously to avoid blocking the main render
+        renderFlowerBed({}, true).then(async flowerBedStrip => {
+            // Guard against race conditions
+            if (this.renderId !== myRenderId) return;
+            
+            // Check if we should show the "Plant a flower" CTA
+            // Only for logged-in visitors who haven't planted yet
+            const canShowPlantCTA = isLoggedIn() && !isOwnerLoggedIn && ownerDid;
+            
+            if (canShowPlantCTA) {
+                const currentDid = getCurrentDid();
+                const hasPlantedFlower = await this.interactions.checkHasPlantedFlower(ownerDid, currentDid);
+                
+                // Guard against race conditions after async check
+                if (this.renderId !== myRenderId) return;
+                
+                if (!hasPlantedFlower) {
+                    // Create the flower bed strip if it doesn't exist (no visitors yet)
+                    if (!flowerBedStrip) {
+                        flowerBedStrip = document.createElement('div');
+                        flowerBedStrip.className = 'flower-bed header-strip';
+                        const grid = document.createElement('div');
+                        grid.className = 'flower-grid';
+                        flowerBedStrip.appendChild(grid);
+                    }
+                    
+                    // Create the CTA button
+                    const plantCTA = document.createElement('button');
+                    plantCTA.className = 'button button-small header-strip-cta';
+                    plantCTA.textContent = 'Plant your flower';
+                    plantCTA.setAttribute('aria-label', 'Plant your flower in this garden');
+                    plantCTA.title = 'Leave your unique flower in this garden';
+                    plantCTA.addEventListener('click', () => this.interactions.plantFlower());
+                    
+                    // Add CTA to the flower grid
+                    const grid = flowerBedStrip.querySelector('.flower-grid');
+                    if (grid) {
+                        grid.appendChild(plantCTA);
+                    }
+                }
+            }
+            
+            if (flowerBedStrip) {
+                // Insert after header, before main
+                const main = this.app.querySelector('main');
+                if (main) {
+                    this.app.insertBefore(flowerBedStrip, main);
+                } else {
+                    this.app.appendChild(flowerBedStrip);
+                }
+            }
+        }).catch(err => {
+            console.error('Failed to render flower bed header strip:', err);
+        });
     }
 
     showNotification(message: string, type: 'success' | 'error' = 'success') {
