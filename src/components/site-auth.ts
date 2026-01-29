@@ -70,7 +70,7 @@ export class SiteAuth {
                 setSiteOwnerDid(detail.did);
 
                 if (SiteRouter.isViewingProfile() && getSiteOwnerDid() === detail.did) {
-                    await applyTheme(existingConfig.theme);
+                    await applyTheme(existingConfig.theme, { did: detail.did });
                 }
 
             } else {

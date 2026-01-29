@@ -3,7 +3,7 @@
  * Refactored to use modular components.
  */
 
-import { initConfig, getConfig } from '../config';
+import { initConfig, getConfig, getSiteOwnerDid } from '../config';
 import { applyTheme } from '../themes/engine';
 import { escapeHtml } from '../utils/sanitize';
 import { SiteRouter } from './site-router';
@@ -96,7 +96,9 @@ class SiteApp extends HTMLElement {
     
     // Always apply theme (including home page) so fonts-ready is set and text isn't hidden.
     // On navigation, don't block on font loading (big perf win when gardens use different fonts).
-    await applyTheme(config.theme, { waitForFonts: isInitialLoad });
+    // Pass DID for isoline pattern generation
+    const did = getSiteOwnerDid();
+    await applyTheme(config.theme, { waitForFonts: isInitialLoad, did: did || undefined });
     
     // On initial load, set up auth and theme-ready state
     if (isInitialLoad) {
@@ -119,7 +121,8 @@ class SiteApp extends HTMLElement {
       const config = getConfig();
       // Only apply theme when viewing a garden page, not on home page
       if (SiteRouter.isViewingProfile()) {
-        await applyTheme(config.theme);
+        const did = getSiteOwnerDid();
+        await applyTheme(config.theme, { did: did || undefined });
       }
       this.renderer.render();
     });
