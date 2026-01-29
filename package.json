@@ -11,7 +11,8 @@
     "publish-lexicons": "node scripts/publish-lexicons.js",
     "test": "vitest",
     "test:ui": "vitest --ui",
-    "test:run": "vitest run"
+    "test:run": "vitest run",
+    "preview:colors": "npx tsx scripts/preview-colors.ts"
   },
   "dependencies": {
     "@atcute/client": "^4.2.1",

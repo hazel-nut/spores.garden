@@ -134,11 +134,9 @@ findSporesForGarden(gardenOwnerDid: string): Promise<SporeInfo[]>
 renderSporesInFlowerBed(ownerDid: string, grid: HTMLElement): Promise<void>
 ```
 
-**Floating Badge** (`src/components/spore-badge.ts`):
-```typescript
-// Self-contained component that renders on current holder's garden
-class SporeBadge extends HTMLElement
-```
+**Spore Modal & Steal UI** (`src/components/spore-modal.ts`, `src/utils/special-spore.ts`):
+- Lineage and “Held by” / “Steal!” are shown in the spore details modal (below lineage).
+- `findAllHeldSpores`, `findSporeByOrigin`, and `stealSpore` live in `src/utils/special-spore.ts`.
 
 ## Gamification Aspects
 
@@ -153,7 +151,8 @@ class SporeBadge extends HTMLElement
 - **Lexicon**: `lexicons/garden.spores.item.specialSpore.json`
 - **Outline Flower**: `src/utils/flower-svg.ts` (generateSporeFlowerSVGString)
 - **Flower Bed Integration**: `src/layouts/flower-bed.ts`
-- **Floating Badge**: `src/components/spore-badge.ts`
+- **Spore modal (lineage + steal)**: `src/components/spore-modal.ts`
+- **Special spore logic**: `src/utils/special-spore.ts`
 - **Generation Logic**: `src/config.ts`
 - **Validation**: `src/config.ts` (isValidSpore)
 
@@ -161,5 +160,5 @@ class SporeBadge extends HTMLElement
 
 The previous `special-spore-display` section type is deprecated. Spores now:
 1. Automatically appear in flower beds (no section needed)
-2. Show as a floating badge on current holder's garden
+2. Show lineage and steal UI in the spore details modal (opened from header or flower bed)
 3. Existing sections will show a migration notice
