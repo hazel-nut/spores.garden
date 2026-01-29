@@ -68,6 +68,7 @@ class SectionBlock extends HTMLElement {
     // editMode will still ensure the header container exists to hold the controls
     const shouldShowTitle = this.section.title &&
       (!isBlueskyPostSection && !this.section.hideHeader);
+    let editControls: HTMLElement | null = null;
     if (shouldShowTitle || this.editMode) {
       const header = document.createElement('div');
       header.className = 'section-header';
@@ -86,13 +87,7 @@ class SectionBlock extends HTMLElement {
       header.appendChild(titleContainer);
 
       if (this.editMode) {
-        const controls = this.createEditControls();
-        header.appendChild(controls);
-        // Update info box asynchronously after controls are added
-        const infoBox = controls.querySelector('.section-info');
-        if (infoBox) {
-          this.updateInfoBox(infoBox as HTMLElement);
-        }
+        editControls = this.createEditControls();
       }
 
       fragment.appendChild(header);
@@ -147,6 +142,16 @@ class SectionBlock extends HTMLElement {
     this.className = 'section';
     this.setAttribute('data-type', this.section.type);
     fragment.appendChild(content);
+
+    // In edit mode, keep the title above but move controls under the content
+    if (this.editMode && editControls) {
+      fragment.appendChild(editControls);
+      // Update info box asynchronously after controls are in the DOM
+      const infoBox = editControls.querySelector('.section-info');
+      if (infoBox) {
+        this.updateInfoBox(infoBox as HTMLElement);
+      }
+    }
     this.replaceChildren(fragment);
   }
 
