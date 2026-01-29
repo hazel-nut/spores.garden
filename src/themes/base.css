@@ -191,7 +191,7 @@ site-app.theme-ready .header {
 .header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   padding: var(--spacing-lg);
   padding-top: calc(var(--spacing-lg) + var(--safe-area-inset-top));
   padding-left: calc(var(--spacing-lg) + var(--safe-area-inset-left));
@@ -345,6 +345,7 @@ site-app.theme-ready .header {
   border: var(--border-width) var(--border-style) var(--color-border-dark);
   cursor: pointer;
   flex-shrink: 0;
+  align-self: flex-start;
 }
 
 .mobile-menu-toggle svg {
@@ -372,17 +373,27 @@ site-app.theme-ready .header {
   .header {
     position: relative;
     padding: var(--spacing-sm) var(--spacing-md);
-    padding-top: calc(var(--spacing-sm) + var(--safe-area-inset-top));
+    padding-top: calc(var(--spacing-md) + var(--safe-area-inset-top));
     padding-left: calc(var(--spacing-md) + var(--safe-area-inset-left));
     padding-right: calc(var(--spacing-md) + var(--safe-area-inset-right));
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
   }
 
   .header-left {
     flex: 1;
     min-width: 0;
-    overflow: hidden;
-    /* Allow text truncation */
+    overflow: visible;
+    flex-wrap: nowrap !important;
+    /* Prevent wrapping - keep title on same line as home button */
+  }
+
+  /* Title container should flex and allow text wrapping */
+  .header-left > div {
+    flex: 1;
+    min-width: 0;
+    max-width: 100%;
+    overflow-wrap: break-word;
+    word-wrap: break-word;
   }
 
   .site-info {
@@ -392,17 +403,16 @@ site-app.theme-ready .header {
 
   .site-title {
     font-size: 1.25rem;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
     max-width: 100%;
   }
 
   .site-subtitle {
     font-size: 0.85rem;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    max-width: 100%;
   }
 
   .controls {
