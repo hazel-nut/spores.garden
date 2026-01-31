@@ -1,6 +1,7 @@
 import chroma from 'chroma-js';
 import { FONT_PAIRINGS } from './fonts.js';
 import { generateColorsFromDid } from './colors.js';
+import { generateIsolineConfigFromDid, getIsolineForDid, clearIsolineCache, type IsolineConfig } from './isolines.js';
 
 /**
  * Theme Engine
@@ -121,13 +122,17 @@ export function generateThemeFromDid(did: string) {
     color: chroma(shadowColorBase).alpha(SHADOW_OPACITIES[shadowOpacityIndex]).css()
   };
 
+  // Generate isoline configuration
+  const isolines = generateIsolineConfigFromDid(did, colors);
+
   return {
     theme: {
       colors,
       fonts: FONT_PAIRINGS[hash % FONT_PAIRINGS.length],
       borderStyle: BORDER_STYLES[hash % BORDER_STYLES.length],
       borderWidth: BORDER_WIDTHS[hash % BORDER_WIDTHS.length],
-      shadow
+      shadow,
+      isolines
     },
     metadata: {
       hash,
@@ -274,10 +279,11 @@ export function restorePreviousTheme(): void {
  */
 export function applyTheme(
   themeConfig: any = {},
-  options?: { waitForFonts?: boolean }
+  options?: { waitForFonts?: boolean; did?: string }
 ): Promise<void> {
   return new Promise(async (resolve) => {
     const waitForFonts = options?.waitForFonts !== false;
+    const did = options?.did;
     const preset = themeConfig.preset || 'minimal';
     const presetTheme = THEME_PRESETS[preset] || THEME_PRESETS.minimal;
 
@@ -287,6 +293,7 @@ export function applyTheme(
     const borderStyle = themeConfig.borderStyle || 'solid';
     const borderWidth = themeConfig.borderWidth || '2px';
     const shadow = themeConfig.shadow || {};
+    const isolines = themeConfig.isolines;
 
     // Extract font names that need to be loaded
     const fontNamesToLoad: string[] = [];
@@ -308,10 +315,23 @@ export function applyTheme(
     // Apply CSS custom properties
     const root = document.documentElement;
 
+    // Helper to extract RGB values from hex color
+    const hexToRgb = (hex: string): string | null => {
+      const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+      return result
+        ? `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}`
+        : null;
+    };
+
     // Colors
     Object.entries(colors).forEach(([key, value]) => {
       if (value) {
         root.style.setProperty(`--color-${key}`, value as string);
+        // Also set RGB version for use with rgba()
+        const rgb = hexToRgb(value as string);
+        if (rgb) {
+          root.style.setProperty(`--color-${key}-rgb`, rgb);
+        }
       }
     });
 
@@ -351,6 +371,20 @@ export function applyTheme(
     if (shadow.blur) root.style.setProperty('--shadow-blur', String(shadow.blur));
     if (shadow.spread) root.style.setProperty('--shadow-spread', String(shadow.spread));
     if (shadow.color) root.style.setProperty('--shadow-color', String(shadow.color));
+
+    // Apply isoline background pattern
+    // Respect prefers-reduced-motion by not applying pattern
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (did && isolines && !prefersReducedMotion) {
+      // Use the larger of viewport dimensions; minimum 2560 for denser isolines
+      const maxDimension = Math.max(window.innerWidth, window.innerHeight, 2560);
+      const { dataUri } = getIsolineForDid(did, colors, maxDimension, maxDimension);
+      root.style.setProperty('--pattern-background', `url("${dataUri}")`);
+      document.body.classList.add('has-pattern');
+    } else {
+      root.style.setProperty('--pattern-background', 'none');
+      document.body.classList.remove('has-pattern');
+    }
 
     // Add theme class to body
     document.body.className = document.body.className
@@ -499,3 +533,6 @@ export function hasCustomThemeOverrides(did: string, themeConfig: any): boolean 
 
   return false;
 }
+
+// Re-export isoline utilities for external use
+export { clearIsolineCache, type IsolineConfig };

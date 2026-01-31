@@ -29,8 +29,10 @@
 
   /* Colors - High Contrast */
   --color-background: #ffffff;
-  --color-surface: #f8f9fa;
+  --color-background-rgb: 255, 255, 255;
   --color-text: #000000;
+  --color-text-rgb: 0, 0, 0;
+  --color-surface: #f8f9fa;
   --color-text-muted: #6b7280;
   --color-primary: #000000;
   --color-accent: #0ea5e9;
@@ -62,6 +64,8 @@
   --border-width-thick: 4px;
   --border-width-extra-thick: 20px;
   --border-style: solid;
+  /* Border radius derived from border-width */
+  --border-radius: calc(var(--border-width) * 4);
 
   /* Drop shadow (overridden by theme engine / generated themes) */
   --shadow-type: normal;
@@ -91,11 +95,19 @@
 body {
   margin: 0;
   padding: 0;
+  min-height: 100vh;
+  min-height: 100svh; /* Small viewport height for mobile */
   font-family: var(--font-body);
   font-size: var(--font-size-base);
   line-height: 1.5;
   color: var(--color-text);
   background-color: var(--color-background);
+  /* Isoline pattern background - fixed and covers full viewport */
+  background-image: var(--pattern-background, none);
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+  background-position: center center;
   /* Smooth color transitions when navigating between gardens */
   transition: background-color 0.6s ease-in-out, color 0.6s ease-in-out;
   -webkit-font-smoothing: antialiased;
@@ -195,7 +207,7 @@ site-app.theme-ready .header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  padding-bottom: var(--spacing-sm);
+  padding-bottom: var(--spacing-md);
   padding-top: calc(var(--spacing-lg) + var(--safe-area-inset-top));
   padding-left: calc(var(--spacing-lg) + var(--safe-area-inset-left));
   padding-right: calc(var(--spacing-lg) + var(--safe-area-inset-right));
@@ -417,6 +429,7 @@ site-app.theme-ready .header {
 
   .header {
     position: relative;
+    z-index: 200;
     padding: var(--spacing-sm) var(--spacing-md);
     padding-top: calc(var(--spacing-md) + var(--safe-area-inset-top));
     padding-left: calc(var(--spacing-md) + var(--safe-area-inset-left));
@@ -484,6 +497,14 @@ site-app.theme-ready .header {
     pointer-events: auto;
   }
 
+  /* Match header padding (including safe area) so dropdown aligns when has-pattern */
+  body.has-pattern .controls.open {
+    padding-top: var(--spacing-sm);
+    padding-bottom: var(--spacing-sm);
+    padding-left: calc(var(--spacing-md) + var(--safe-area-inset-left));
+    padding-right: calc(var(--spacing-md) + var(--safe-area-inset-right));
+  }
+
   .controls .button {
     width: 100%;
     justify-content: center;
@@ -524,9 +545,8 @@ site-app.theme-ready .header {
 .main {
   flex: 1;
   max-width: 1200px;
-  margin: 0 auto;
+  margin: 0 var(--spacing-lg);
   padding: var(--spacing-xl) var(--spacing-lg);
-  width: 100%;
   display: flex;
   flex-direction: column;
 }
@@ -551,6 +571,89 @@ site-app.theme-ready .header {
 
 .section {
   margin-bottom: var(--spacing-xl);
+}
+
+/* Liquid glass effect for sections when isoline pattern is active */
+body.has-pattern .section,
+body.has-pattern section-block,
+body.has-pattern section-block.section {
+  background: rgba(var(--color-background-rgb), 0.25) !important;
+  border-radius: var(--border-radius);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(80px);
+  -webkit-backdrop-filter: blur(80px);
+  border: 1px solid rgba(var(--color-text-rgb), 0.1);
+  padding: var(--spacing-lg);
+  margin-left: calc(-1 * var(--spacing-lg));
+  margin-right: calc(-1 * var(--spacing-lg));
+  padding-left: var(--spacing-lg);
+  padding-right: var(--spacing-lg);
+}
+
+/* Liquid glass effect for header and mobile menu when isoline pattern is active */
+body.has-pattern .header,
+body.has-pattern .controls.open {
+  background: rgba(var(--color-background-rgb), 0.25) !important;
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(80px);
+  -webkit-backdrop-filter: blur(80px);
+  border-bottom: 1px solid rgba(var(--color-text-rgb), 0.1);
+}
+
+/* When menu open: header + dropdown read as one panel (no double border) */
+body.has-pattern .header:has(.controls.open) {
+  border-bottom: none !important;
+}
+
+/* Fallback for browsers without backdrop-filter support */
+@supports not (backdrop-filter: blur(1px)) {
+  body.has-pattern .section,
+  body.has-pattern section-block,
+  body.has-pattern section-block.section {
+    background: rgba(var(--color-background-rgb), 0.85) !important;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+  }
+  body.has-pattern .header,
+  body.has-pattern .controls.open {
+    background: rgba(var(--color-background-rgb), 0.9) !important;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+  }
+  body.has-pattern .garden-preview__flower-box {
+    background: rgba(var(--color-background-rgb), 0.85) !important;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+  }
+}
+
+/* Reduced motion: disable pattern for accessibility */
+@media (prefers-reduced-motion: reduce) {
+  body.has-pattern {
+    background-image: none;
+  }
+  body.has-pattern .section,
+  body.has-pattern section-block {
+    background: transparent !important;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    border-radius: 0;
+    padding: 0;
+    margin-left: 0;
+    margin-right: 0;
+    box-shadow: none;
+    border: none;
+  }
+  body.has-pattern .header,
+  body.has-pattern .controls.open {
+    background: var(--color-background);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  body.has-pattern .garden-preview__flower-box {
+    background: var(--color-background);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    box-shadow: none;
+    border: var(--border-width) var(--border-style) var(--color-border);
+  }
 }
 
 .section-header {
@@ -1567,6 +1670,16 @@ site-app.theme-ready .header {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+/* Liquid glass effect for flower box when isoline pattern is active */
+body.has-pattern .garden-preview__flower-box {
+  background: rgba(var(--color-background-rgb), 0.25) !important;
+  border-radius: var(--border-radius);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(80px);
+  -webkit-backdrop-filter: blur(80px);
+  border: 1px solid rgba(var(--color-text-rgb), 0.1);
 }
 
 .garden-preview__heading {
