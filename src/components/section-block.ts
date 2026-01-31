@@ -49,9 +49,11 @@ class SectionBlock extends HTMLElement {
 
   async render() {
     const token = ++this.renderToken;
+    this.classList.remove('section-ready');
     if (!this.section) {
       this.replaceChildren();
       this.innerHTML = '<div class="error">Invalid section</div>';
+      this.classList.add('section-ready');
       return;
     }
 
@@ -110,6 +112,7 @@ class SectionBlock extends HTMLElement {
             onRefresh: () => this.render(),
             editMode: this.editMode,
           });
+          rendered.classList.add('content-enter');
           content.innerHTML = '';
           content.appendChild(rendered);
           break;
@@ -155,6 +158,7 @@ class SectionBlock extends HTMLElement {
         this.updateInfoBox(infoBox as HTMLElement);
       }
     }
+    this.classList.add('section-ready');
     this.replaceChildren(fragment);
   }
 
@@ -610,6 +614,7 @@ class SectionBlock extends HTMLElement {
       };
 
       const rendered = await renderRecord(record, this.section.layout || 'profile');
+      rendered.classList.add('content-enter');
       container.innerHTML = '';
       container.appendChild(rendered);
     } catch (error) {
@@ -648,7 +653,7 @@ class SectionBlock extends HTMLElement {
       }
 
       const grid = document.createElement('div');
-      grid.className = 'record-grid';
+      grid.className = 'record-grid content-enter';
 
       for (const record of records) {
         try {
@@ -735,7 +740,7 @@ class SectionBlock extends HTMLElement {
     }
 
     const contentDiv = document.createElement('div');
-    contentDiv.className = 'content';
+    contentDiv.className = 'content content-enter';
 
     try {
       if (format === 'html') {
