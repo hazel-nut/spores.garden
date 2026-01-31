@@ -396,21 +396,26 @@ export class SiteRenderer {
             const preview = document.createElement('div');
             preview.className = 'garden-preview';
 
+            const flowerBox = document.createElement('div');
+            flowerBox.className = 'garden-preview__flower-box';
+
             const heading = document.createElement('h2');
             heading.className = 'garden-preview__heading';
             heading.textContent = "A garden could grow here.";
-            preview.appendChild(heading);
+            flowerBox.appendChild(heading);
 
-            const flowerBox = document.createElement('div');
-            flowerBox.className = 'garden-preview__flower-box';
             const flowerSize = 140;
-            flowerBox.innerHTML = generateFlowerSVGString(ownerDid!, flowerSize);
-            preview.appendChild(flowerBox);
+            const svgWrapper = document.createElement('div');
+            svgWrapper.className = 'garden-preview__flower-svg';
+            svgWrapper.innerHTML = generateFlowerSVGString(ownerDid!, flowerSize);
+            flowerBox.appendChild(svgWrapper);
 
             const subtext = document.createElement('p');
             subtext.className = 'garden-preview__subtext';
             subtext.textContent = "If this is your identity, you can login and claim your flower.";
-            preview.appendChild(subtext);
+            flowerBox.appendChild(subtext);
+
+            preview.appendChild(flowerBox);
 
             if (isOwnerLoggedIn) {
                 const editHint = document.createElement('p');
