@@ -1,7 +1,49 @@
 import chroma from 'chroma-js';
 import { FONT_PAIRINGS } from './fonts.js';
 import { generateColorsFromDid } from './colors.js';
-import { generateIsolineConfigFromDid, getIsolineForDid, clearIsolineCache, type IsolineConfig } from './isolines.js';
+import { generateIsolineConfigFromDid, getIsolineSVGStringForDid, clearIsolineCache, type IsolineConfig } from './isolines.js';
+
+/** Current pattern Blob URL; revoked when theme changes to avoid leaks */
+let currentPatternBlobUrl: string | null = null;
+/** Stored so we can regenerate pattern on resize at correct viewport size */
+let lastPatternDid: string | null = null;
+let lastPatternColors: Record<string, string> | null = null;
+
+/** Browser viewport size (innerWidth/innerHeight = what the user sees) */
+function getViewportPatternSize(): { w: number; h: number } {
+  const w = Math.max(Math.round(window.innerWidth), 320);
+  const h = Math.max(Math.round(window.innerHeight), 320);
+  return { w, h };
+}
+
+function applyPatternAtViewportSize(): void {
+  if (!lastPatternDid || !lastPatternColors) return;
+  const { w, h } = getViewportPatternSize();
+  if (currentPatternBlobUrl) URL.revokeObjectURL(currentPatternBlobUrl);
+  const svgString = getIsolineSVGStringForDid(lastPatternDid, lastPatternColors, w, h);
+  const blob = new Blob([svgString], { type: 'image/svg+xml' });
+  currentPatternBlobUrl = URL.createObjectURL(blob);
+  const root = document.documentElement;
+  root.style.setProperty('--pattern-background', `url("${currentPatternBlobUrl}")`);
+  root.style.setProperty('--pattern-width', `${w}px`);
+  root.style.setProperty('--pattern-height', `${h}px`);
+}
+
+let resizeThrottleId: ReturnType<typeof setTimeout> | null = null;
+function onResize(): void {
+  if (resizeThrottleId) return;
+  resizeThrottleId = setTimeout(() => {
+    resizeThrottleId = null;
+    applyPatternAtViewportSize();
+  }, 150);
+}
+
+let resizeListenerAdded = false;
+function ensureResizeListener(): void {
+  if (resizeListenerAdded) return;
+  resizeListenerAdded = true;
+  window.addEventListener('resize', onResize);
+}
 
 /**
  * Theme Engine
@@ -293,7 +335,8 @@ export function applyTheme(
     const borderStyle = themeConfig.borderStyle || 'solid';
     const borderWidth = themeConfig.borderWidth || '2px';
     const shadow = themeConfig.shadow || {};
-    const isolines = themeConfig.isolines;
+    // Isolines: apply when DID is present unless theme explicitly disables (default on for garden pages)
+    const isolines = themeConfig.hasOwnProperty('isolines') ? themeConfig.isolines : true;
 
     // Extract font names that need to be loaded
     const fontNamesToLoad: string[] = [];
@@ -372,25 +415,48 @@ export function applyTheme(
     if (shadow.spread) root.style.setProperty('--shadow-spread', String(shadow.spread));
     if (shadow.color) root.style.setProperty('--shadow-color', String(shadow.color));
 
-    // Apply isoline background pattern
-    // Respect prefers-reduced-motion by not applying pattern
-    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (did && isolines && !prefersReducedMotion) {
-      // Use the larger of viewport dimensions; minimum 2560 for denser isolines
-      const maxDimension = Math.max(window.innerWidth, window.innerHeight, 2560);
-      const { dataUri } = getIsolineForDid(did, colors, maxDimension, maxDimension);
-      root.style.setProperty('--pattern-background', `url("${dataUri}")`);
+    // Apply isoline background pattern (static image, not motion)
+    // Use Blob URL so Chrome doesn't hit data-URI size limit (~2MB).
+    // Size SVG to layout viewport (clientWidth/clientHeight) so pattern matches screen.
+    if (did && isolines !== false) {
+      if (currentPatternBlobUrl) {
+        URL.revokeObjectURL(currentPatternBlobUrl);
+        currentPatternBlobUrl = null;
+      }
+      lastPatternDid = did;
+      lastPatternColors = colors;
+      const { w, h } = getViewportPatternSize();
+      const svgString = getIsolineSVGStringForDid(did, colors, w, h);
+      const blob = new Blob([svgString], { type: 'image/svg+xml' });
+      const blobUrl = URL.createObjectURL(blob);
+      currentPatternBlobUrl = blobUrl;
+      root.style.setProperty('--pattern-background', `url("${blobUrl}")`);
+      root.style.setProperty('--pattern-width', `${w}px`);
+      root.style.setProperty('--pattern-height', `${h}px`);
       document.body.classList.add('has-pattern');
+      ensureResizeListener();
     } else {
+      if (currentPatternBlobUrl) {
+        URL.revokeObjectURL(currentPatternBlobUrl);
+        currentPatternBlobUrl = null;
+      }
+      lastPatternDid = null;
+      lastPatternColors = null;
       root.style.setProperty('--pattern-background', 'none');
+      root.style.removeProperty('--pattern-width');
+      root.style.removeProperty('--pattern-height');
       document.body.classList.remove('has-pattern');
     }
 
-    // Add theme class to body
+    // Add theme class to body (preserve has-pattern if present)
+    const hasPattern = document.body.classList.contains('has-pattern');
     document.body.className = document.body.className
       .replace(/theme-\w+/g, '')
       .trim();
     document.body.classList.add(`theme-${preset}`);
+    if (hasPattern) {
+      document.body.classList.add('has-pattern');
+    }
 
     // Wait for fonts to load before marking theme as ready (optional).
     // This prevents text flicker when custom fonts load, but can slow navigation.

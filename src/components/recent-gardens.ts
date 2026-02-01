@@ -772,7 +772,7 @@ class RecentGardens extends HTMLElement {
 
     this.innerHTML = `
       <section class="recent-gardens">
-        <h2 class="recent-gardens-title">Recent Garden Activity</h2>
+        <h2 class="recent-gardens-title">Recent garden activity</h2>
         <div class="recent-gardens-list">
           ${gardensHTML}
         </div>

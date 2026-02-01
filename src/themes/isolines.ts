@@ -123,16 +123,22 @@ export function generateIsolineSVG(
   height: number,
   seed: number
 ): string {
-  // Grid resolution - finer grid for denser, smoother isolines
-  // Target ~10–14px per cell
-  const gridSize = Math.max(80, Math.min(160, Math.floor(Math.max(width, height) / 10)));
+  // Grid resolution - finer grid for denser, smoother isolines (~10–14px per cell), clamped for performance
+  const maxDimension = Math.max(width, height);
+  // Calculate grid size for the largest dimension, clamped between 80 and 160
+  const maxGridSize = Math.max(80, Math.min(160, Math.floor(maxDimension / 10)));
+
+  // Calculate grid dimensions maintaining aspect ratio
+  // Ensure at least 2 cells to avoid errors
+  const gridWidth = Math.max(2, Math.floor(maxGridSize * (width / maxDimension)));
+  const gridHeight = Math.max(2, Math.floor(maxGridSize * (height / maxDimension)));
 
   // Generate noise grid
   const noise = createSeededNoise2D(seed);
   const grid = generateNoiseGrid(
     noise,
-    gridSize,
-    gridSize,
+    gridWidth,
+    gridHeight,
     config.noiseScale,
     config.noiseOctaves,
     0.5 // persistence
@@ -226,6 +232,20 @@ export function generateIsolineDataURI(
  * Value: { dataUri, config }
  */
 const isolineCache = new Map<string, { dataUri: string; config: IsolineConfig }>();
+
+/**
+ * Get raw SVG string for isoline pattern (for Blob URL; avoids Chrome data-URI size limit).
+ */
+export function getIsolineSVGStringForDid(
+  did: string,
+  colors: ThemeColors,
+  width: number,
+  height: number
+): string {
+  const config = generateIsolineConfigFromDid(did, colors);
+  const seed = stringToHash(did);
+  return generateIsolineSVG(config, width, height, seed);
+}
 
 /**
  * Get or generate isoline data URI for a DID
