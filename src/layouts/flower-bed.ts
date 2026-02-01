@@ -198,7 +198,7 @@ function createDisabledGardenButton(
   isCurrentPage: boolean
 ): HTMLElement {
   const button = document.createElement('div');
-  button.className = 'button button-primary';
+  button.className = 'button button-secondary';
   button.style.display = 'flex';
   button.style.alignItems = 'center';
   button.style.gap = '0.75rem';
@@ -235,18 +235,19 @@ function createDisabledGardenButton(
   primary.style.fontWeight = '700';
   primary.style.fontSize = '0.875rem';
   primary.style.letterSpacing = '0.02em';
-  primary.textContent = `Visit ${gardenHandle}'s garden`;
+  const labelName = displayName || gardenHandle;
+  primary.textContent = `Visit ${labelName}'s garden`;
   textWrap.appendChild(primary);
 
   const secondary = document.createElement('div');
   secondary.style.fontWeight = '400';
   secondary.style.opacity = '0.85';
-  secondary.style.fontSize = '0.875rem';
+  secondary.style.fontSize = '0.75rem';
   secondary.style.overflow = 'hidden';
   secondary.style.textOverflow = 'ellipsis';
   secondary.style.whiteSpace = 'nowrap';
   secondary.style.maxWidth = '100%';
-  secondary.textContent = displayName || gardenHandle;
+  secondary.textContent = gardenHandle;
   textWrap.appendChild(secondary);
 
   button.appendChild(textWrap);
@@ -300,18 +301,19 @@ function createGardenLink(
   primary.style.fontWeight = '700';
   primary.style.fontSize = '0.875rem';
   primary.style.letterSpacing = '0.02em';
-  primary.textContent = `Visit ${gardenHandle}'s garden`;
+  const labelName = displayName || gardenHandle;
+  primary.textContent = `Visit ${labelName}'s garden`;
   textWrap.appendChild(primary);
 
   const secondary = document.createElement('div');
   secondary.style.fontWeight = '400';
   secondary.style.opacity = '0.85';
-  secondary.style.fontSize = '0.875rem';
+  secondary.style.fontSize = '0.75rem';
   secondary.style.overflow = 'hidden';
   secondary.style.textOverflow = 'ellipsis';
   secondary.style.whiteSpace = 'nowrap';
   secondary.style.maxWidth = '100%';
-  secondary.textContent = displayName || gardenHandle;
+  secondary.textContent = gardenHandle;
   textWrap.appendChild(secondary);
 
   visitLink.appendChild(textWrap);
