@@ -174,7 +174,8 @@ export function extractContours(
   const cellWidth = width / gridWidth;
   const cellHeight = height / gridHeight;
   // Use uniform cell size for simplicity (square cells)
-  const cellSize = Math.min(cellWidth, cellHeight);
+  // Use max to ensure we cover the full area (avoiding gaps at edges); overflow is clipped
+  const cellSize = Math.max(cellWidth, cellHeight);
 
   for (const threshold of thresholds) {
     const segments: [Point, Point][] = [];

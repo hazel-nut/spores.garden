@@ -351,6 +351,7 @@ export class SiteRenderer {
         const sections = config.sections || [];
 
         if (isHomePage) {
+            main.classList.add('is-homepage');
             // Home page view
             const homepageView = document.createElement('div');
             homepageView.className = 'homepage-view';
@@ -517,18 +518,18 @@ export class SiteRenderer {
         renderFlowerBed({}, true).then(async flowerBedStrip => {
             // Guard against race conditions
             if (this.renderId !== myRenderId) return;
-            
+
             // Check if we should show the "Plant a flower" CTA
             // Only for logged-in visitors who haven't planted yet
             const canShowPlantCTA = isLoggedIn() && !isOwnerLoggedIn && ownerDid;
-            
+
             if (canShowPlantCTA) {
                 const currentDid = getCurrentDid();
                 const hasPlantedFlower = await this.interactions.checkHasPlantedFlower(ownerDid, currentDid);
-                
+
                 // Guard against race conditions after async check
                 if (this.renderId !== myRenderId) return;
-                
+
                 if (!hasPlantedFlower) {
                     // Create the flower bed strip if it doesn't exist (no visitors yet)
                     if (!flowerBedStrip) {
@@ -538,7 +539,7 @@ export class SiteRenderer {
                         grid.className = 'flower-grid';
                         flowerBedStrip.appendChild(grid);
                     }
-                    
+
                     // Create the CTA button
                     const plantCTA = document.createElement('button');
                     plantCTA.className = 'button button-small header-strip-cta';
@@ -546,7 +547,7 @@ export class SiteRenderer {
                     plantCTA.setAttribute('aria-label', 'Plant your flower in this garden');
                     plantCTA.title = 'Leave your unique flower in this garden';
                     plantCTA.addEventListener('click', () => this.interactions.plantFlower());
-                    
+
                     // Add CTA to the flower grid
                     const grid = flowerBedStrip.querySelector('.flower-grid');
                     if (grid) {
@@ -554,7 +555,7 @@ export class SiteRenderer {
                     }
                 }
             }
-            
+
             if (flowerBedStrip) {
                 // Insert after header, before main
                 const main = this.app.querySelector('main');
