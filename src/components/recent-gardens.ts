@@ -714,7 +714,7 @@ class RecentGardens extends HTMLElement {
     if (this.loading) {
       this.innerHTML = `
         <section class="recent-gardens">
-          <h2 class="recent-gardens-title">Loading Activity...</h2>
+          <h2 class="recent-gardens-title">Loading activity...</h2>
         </section>
       `;
       return;
@@ -724,7 +724,7 @@ class RecentGardens extends HTMLElement {
       if (showEmpty) {
         this.innerHTML = `
           <section class="recent-gardens">
-            <h2 class="recent-gardens-title">No Recent Activity</h2>
+            <h2 class="recent-gardens-title">No recent activity</h2>
           </section>
         `;
       } else {

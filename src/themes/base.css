@@ -901,7 +901,7 @@ body.has-pattern .header:has(.controls.open) {
    ============================================ */
 
 .button {
-  font-family: var(--font-heading);
+  font-family: var(--font-body);
   font-size: 0.875rem;
   font-weight: 700;
   padding: var(--spacing-md) var(--spacing-lg);
@@ -1824,7 +1824,7 @@ body.has-pattern .garden-preview__flower-box {
   background: #dc2626;
   color: white;
   border: var(--border-width) solid #b91c1c;
-  font-family: var(--font-heading);
+  font-family: var(--font-body);
   font-size: 0.875rem;
   font-weight: 700;
   text-transform: uppercase;
@@ -3333,7 +3333,7 @@ body.has-pattern .garden-preview__flower-box {
   justify-content: center;
   padding: 0;
   transition: all var(--transition);
-  font-family: var(--font-heading);
+  font-family: var(--font-body);
   line-height: 1;
 }
 
