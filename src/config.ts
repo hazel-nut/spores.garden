@@ -258,11 +258,12 @@ export function getSiteOwnerDid() {
 export function isOwner() {
   if (!isLoggedIn()) return false;
   const currentDid = getCurrentDid();
-  if (!siteOwnerDid && currentDid) {
-    siteOwnerDid = currentDid;
-    return true;
+  const ownerDid = getSiteOwnerDid(); // Use the getter
+
+  if (!currentDid || !ownerDid) {
+    return false;
   }
-  return currentDid && currentDid === siteOwnerDid;
+  return currentDid === ownerDid;
 }
 
 /**
