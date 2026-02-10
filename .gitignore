@@ -29,3 +29,7 @@ public/lexicons/
 public/.well-known/atproto-lexicon/
 public/.well-known/atproto-lexicons
 public/.well-known/atproto-lexicons.json
+
+
+# temp testing grounds
+scripts/stress_test/
