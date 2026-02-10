@@ -2,6 +2,7 @@ import { getConfig, getSiteOwnerDid, isOwner } from '../config';
 import { isLoggedIn, getCurrentDid, logout } from '../oauth';
 import { getProfile } from '../at-client';
 import { escapeHtml } from '../utils/sanitize';
+import { getSafeHandle, truncateDid } from '../utils/identity';
 import { SiteRouter } from './site-router';
 import { generateFlowerSVGString, generateSporeFlowerSVGString, generateMonochromeSporeFlowerSVGString } from '../utils/flower-svg';
 import { showSporeDetailsModal } from './spore-modal';
@@ -95,14 +96,14 @@ export class SiteRenderer {
         homeButton.className = 'home-button';
         homeButton.setAttribute('aria-label', 'Go to home page');
         homeButton.title = 'Go to home page';
-        
+
         // On garden pages (not home), show owner's unique flower in monochrome
         if (!isHomePage && ownerDid) {
             homeButton.innerHTML = generateMonochromeSporeFlowerSVGString(ownerDid, 40);
         } else {
             homeButton.innerHTML = this.getDandelionIcon();
         }
-        
+
         leftGroup.appendChild(homeButton);
 
         // Title and subtitle container
@@ -454,9 +455,9 @@ export class SiteRenderer {
             // Resolve handle for heading: "@handle's garden could grow here"
             getProfile(ownerDid!).then((profile) => {
                 if (this.renderId !== myRenderId) return;
-                if (profile?.handle) {
-                    heading.textContent = `@${profile.handle}'s garden could grow here`;
-                }
+                const safeHandle = getSafeHandle(profile?.handle, ownerDid!);
+                const displayHandle = safeHandle === ownerDid ? truncateDid(ownerDid!) : `@${safeHandle}`;
+                heading.textContent = `${displayHandle}'s garden could grow here`;
             }).catch(() => { /* keep fallback heading */ });
         } else {
             // Viewing a profile with sections

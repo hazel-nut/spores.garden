@@ -1,6 +1,7 @@
 import { listRecords, getProfiles } from '../at-client';
 import { getCurrentDid, isLoggedIn, deleteRecord, putRecord } from '../oauth';
 import { getSiteOwnerDid } from '../config';
+import { getSafeHandle, truncateDid } from '../utils/identity';
 import { showConfirmModal } from '../utils/confirm-modal';
 
 /** Pen (edit) icon – 24×24 viewBox, stroke. */
@@ -47,7 +48,7 @@ export async function renderCollectedFlowers(
     const grid = document.createElement('div');
     grid.className = 'flower-grid'; // Re-use flower-grid style
 
-    const uniqueDids = [...new Set(takenFlowers.map((r) => r.value.sourceDid).filter(Boolean))];
+    const uniqueDids = [...new Set(takenFlowers.map((r: any) => r.value.sourceDid).filter((d: any) => typeof d === 'string'))] as string[];
     const profileMap = await getProfiles(uniqueDids);
 
     for (const flowerRecord of takenFlowers) {
@@ -64,10 +65,12 @@ export async function renderCollectedFlowers(
       link.title = `View ${sourceDid}'s garden`;
 
       const profile = profileMap.get(sourceDid) as { handle?: string; displayName?: string } | null | undefined;
-      if (profile?.handle) {
-        link.href = `/@${profile.handle}`;
-      }
-      const displayName = profile?.displayName ?? profile?.handle ?? sourceDid;
+      const safeHandle = getSafeHandle(profile?.handle, sourceDid);
+      link.href = `/@${safeHandle}`;
+      link.title = `View ${sourceDid}'s garden`;
+
+      const displayHandle = safeHandle === sourceDid ? truncateDid(sourceDid) : safeHandle;
+      const displayName = profile?.displayName || displayHandle;
       if (displayName !== sourceDid) {
         link.title = `View ${displayName}'s garden`;
       }

@@ -1,5 +1,6 @@
 import { getBacklinks, getProfile, getRecord } from '../at-client';
 import { getCurrentDid, isLoggedIn } from '../oauth';
+import { getSafeHandle, truncateDid } from '../utils/identity';
 import { generateFlowerSVGString, generateSporeFlowerSVGString } from '../utils/flower-svg';
 import { stealSpore } from '../utils/special-spore';
 import { showConfirmModal, showAlertModal } from '../utils/confirm-modal';
@@ -100,12 +101,13 @@ function buildLineageContent(
 
   const getHandle = (did: string) => {
     const profile = profileMap.get(did);
-    return profile?.handle || did.substring(0, 20) + '...';
+    const safe = getSafeHandle(profile?.handle, did);
+    return safe === did ? truncateDid(did) : safe;
   };
 
   const getLink = (did: string) => {
     const profile = profileMap.get(did);
-    return `/@${profile?.handle || did}`;
+    return `/@${getSafeHandle(profile?.handle, did)}`;
   };
 
   const formatDate = (timestamp?: string) => {
@@ -147,8 +149,8 @@ export async function showSporeDetailsModal(originGardenDid: string) {
   const contentSlot = 'data-spore-lineage-slot';
   modal.innerHTML = `
     <div class="modal-content" style="max-width: 480px;">
-      <div class="modal-header" style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; margin-bottom: 1rem;">
-        <h2 style="margin: 0; font-size: 1.25rem; line-height: 1.3;">
+      <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin-bottom: 1rem;">
+        <h2 style="margin: 0; line-height: 1.3;">
           This rare spore travels from garden to garden. Follow its journey!
         </h2>
         <button class="button button-ghost modal-close" aria-label="Close" style="font-size: 1.5rem; line-height: 1; padding: 0; width: 2rem; height: 2rem; flex-shrink: 0;">×</button>
@@ -193,7 +195,8 @@ export async function showSporeDetailsModal(originGardenDid: string) {
     const isOwner = visitorDid === currentHolderDid;
     const canSteal = isLoggedIn() && !!visitorDid && !isOwner;
     const currentHolderProfile = profileMap.get(currentHolderDid);
-    const ownerHandle = currentHolderProfile?.handle || currentHolderDid.substring(0, 20) + '...';
+    const safeOwnerHandle = getSafeHandle(currentHolderProfile?.handle, currentHolderDid);
+    const ownerHandle = safeOwnerHandle === currentHolderDid ? truncateDid(currentHolderDid) : safeOwnerHandle;
 
     const holderHtml = canSteal ? `
       <div class="spore-modal-holder" style="margin-top: 1.25rem; padding-top: 1.25rem;">
