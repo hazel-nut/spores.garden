@@ -13,6 +13,7 @@ import { getCurrentDid, getAgent } from '../oauth';
 import { addSection, getConfig, updateConfig, updateTheme, saveConfig } from '../config';
 import { getProfile } from '../at-client';
 import { generateThemeFromDid } from '../themes/engine';
+import { getSafeHandle, getDisplayHandle } from '../utils/identity';
 import type { ATRecord } from '../types';
 import './did-visualization';
 import './theme-metadata';
@@ -81,7 +82,7 @@ class WelcomeModal extends HTMLElement {
             <h1 class="welcome-title">Welcome to spores.garden</h1>
             <p class="welcome-subtitle">Let's get your garden started.</p>
           </div>
-          <p>On Bluesky, you are known as <strong>${this.profile?.displayName || ''}</strong> (@${this.profile?.handle || ''}).</p>
+          <p>On Bluesky, you are known as <strong>${this.profile?.displayName || ''}</strong> (${getDisplayHandle(this.profile?.handle, this.did || '')}).</p>
           <p>On spores.garden, you can customize your page's headers before generating your unique theme.</p>
           <div class="form-group">
             <label for="site-title">Site Title (H1)</label>
@@ -89,7 +90,10 @@ class WelcomeModal extends HTMLElement {
           </div>
           <div class="form-group">
             <label for="site-subtitle">Site Subtitle (H2)</label>
-            <input type="text" id="site-subtitle" class="input" value="${this.profile?.handle ? '@' + this.profile.handle : ''}">
+            <input type="text" id="site-subtitle" class="input" value="${(() => {
+        const safe = getSafeHandle(this.profile?.handle, this.did || '');
+        return safe === this.did ? '' : '@' + safe;
+      })()}">
           </div>
           <button id="generate-styles-btn" class="button button-primary">Generate unique styles from your DID</button>
         </div>

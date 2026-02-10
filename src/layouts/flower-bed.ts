@@ -1,6 +1,7 @@
 import { getBacklinks, getProfile, listRecords, getRecord } from '../at-client';
 import { getSiteOwnerDid, isValidSpore } from '../config';
 import { isLoggedIn, getCurrentDid } from '../oauth';
+import { getSafeHandle, truncateDid } from '../utils/identity';
 import { generateThemeFromDid } from '../themes/engine';
 import { generateSporeFlowerSVGString, generateFlowerSVGString } from '../utils/flower-svg';
 import { escapeHtml } from '../utils/sanitize';
@@ -285,8 +286,9 @@ async function showFlowerGardensModal(flowerDid: string) {
     flowerProfile = null;
   }
 
-  const flowerHandle = flowerProfile?.handle || flowerDid.substring(0, 20) + '...';
-  const flowerDisplayName = flowerProfile?.displayName || `${flowerHandle}`;
+  const safeHandle = getSafeHandle(flowerProfile?.handle, flowerDid);
+  const flowerHandle = safeHandle === flowerDid ? truncateDid(flowerDid) : safeHandle;
+  const flowerDisplayName = flowerProfile?.displayName || flowerHandle;
   const isFlowerGardenCurrentPage = currentPageDid && flowerDid === currentPageDid;
 
   // Create modal
@@ -294,8 +296,8 @@ async function showFlowerGardensModal(flowerDid: string) {
   modal.className = 'modal';
   modal.innerHTML = `
     <div class="modal-content" style="max-width: 480px;">
-      <div class="modal-header" style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; margin-bottom: 1rem;">
-        <h2 style="margin: 0; font-size: 1.25rem; line-height: 1.3;">
+      <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin-bottom: 1rem;">
+        <h2 style="margin: 0; line-height: 1.3;">
           This flower is originally from <span style="white-space: nowrap;">${escapeHtml(flowerDisplayName)}</span>'s garden
         </h2>
         <button class="button button-ghost modal-close" aria-label="Close" style="font-size: 1.5rem; line-height: 1; padding: 0; width: 2rem; height: 2rem; flex-shrink: 0;">×</button>
@@ -305,7 +307,7 @@ async function showFlowerGardensModal(flowerDid: string) {
         Visit other gardens where this flower grows
       </p>
       <div id="flower-gardens-list" style="min-height: 100px;">
-        <h2 style="margin: 0; font-family: var(--font-heading); font-size: 1.25rem; line-height: 1.3;">Loading gardens...</h2>
+        <h2 style="margin: 0; line-height: 1.3;">Loading gardens...</h2>
       </div>
     </div>
   `;
@@ -350,7 +352,11 @@ async function showFlowerGardensModal(flowerDid: string) {
     for (const { gardenDid, profile } of gardens) {
       if (currentPageDid && gardenDid === currentPageDid) continue;
 
-      const gardenHandle = profile?.handle ? `@${profile.handle}` : `${gardenDid.substring(0, 20)}...`;
+      if (currentPageDid && gardenDid === currentPageDid) continue;
+
+      const safeGardenHandle = getSafeHandle(profile?.handle, gardenDid);
+      const displayGardenHandle = safeGardenHandle === gardenDid ? truncateDid(gardenDid) : safeGardenHandle;
+      const gardenHandle = `@${displayGardenHandle}`;
       const visitLink = createGardenLink(
         gardenDid,
         gardenHandle,
