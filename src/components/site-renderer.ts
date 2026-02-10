@@ -470,7 +470,7 @@ export class SiteRenderer {
             for (const section of activeSections) {
                 const sectionEl = document.createElement('section-block');
                 sectionEl.setAttribute('data-section', JSON.stringify(section));
-                sectionEl.setAttribute('data-edit-mode', this.editor.editMode.toString());
+                sectionEl.setAttribute('data-edit-mode', (this.editor.editMode && isOwnerLoggedIn).toString());
 
                 sectionEl.addEventListener('share-to-bluesky', () => {
                     this.interactions.shareToBluesky();
@@ -481,7 +481,7 @@ export class SiteRenderer {
         }
 
         // Add section button in edit mode
-        if (this.editor.editMode && !isHomePage) {
+        if (this.editor.editMode && isOwnerLoggedIn && !isHomePage) {
             const addBtn = document.createElement('button');
             addBtn.className = 'add-section';
             addBtn.textContent = '+ Add Section';
