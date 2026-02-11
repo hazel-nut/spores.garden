@@ -153,6 +153,7 @@ class SiteApp extends HTMLElement {
    */
   private async handleNavigation(): Promise<void> {
     try {
+      this.editor.editMode = false;
       await this.initializeAndRender(false);
     } catch (error) {
       console.error('Failed to handle navigation:', error);

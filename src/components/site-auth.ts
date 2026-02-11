@@ -1,4 +1,4 @@
-import { initConfig, setSiteOwnerDid, loadUserConfig, hasUserConfig, getSiteOwnerDid } from '../config';
+import { initConfig, setSiteOwnerDid, loadUserConfig, hasUserConfig, getSiteOwnerDid, hasGardenIdentifierInUrl } from '../config';
 import { initOAuth, isLoggedIn, logout, login, getCurrentDid } from '../oauth';
 import { applyTheme } from '../themes/engine';
 import { SiteRouter } from './site-router';
@@ -61,7 +61,7 @@ export class SiteAuth {
         // If user logged in and no site owner set (home page), they become the owner
         const currentSiteOwner = getSiteOwnerDid();
 
-        if (detail?.loggedIn && detail?.did && !currentSiteOwner) {
+        if (detail?.loggedIn && detail?.did && !currentSiteOwner && !hasGardenIdentifierInUrl()) {
             // Try to load existing config for this user
             const existingConfig = await loadUserConfig(detail.did);
 
