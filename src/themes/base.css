@@ -9,7 +9,7 @@
 
 /* Fonts are loaded dynamically based on theme - see engine.ts */
 /* Only Inter and JetBrains Mono are loaded statically as fallbacks */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&family=Work+Sans:wght@400;600&display=swap');
 
 /* ============================================
    CSS Custom Properties
@@ -618,6 +618,33 @@ site-app.theme-ready .header {
   color: var(--color-text-muted);
   font-size: 0.875rem;
   margin-top: var(--spacing-xl);
+  margin-bottom: var(--spacing-xl);
+}
+
+.footer a {
+  color: inherit;
+}
+
+.footer .hypha-credit-link,
+.footer .hypha-credit-link:visited {
+  color: #9900FC;
+  font-family: 'Work Sans', var(--font-body);
+  font-size: 1.1em;
+  text-decoration-line: none;
+  text-decoration-color: #000;
+  text-decoration-style: solid;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+  text-decoration-skip-ink: none;
+}
+
+.footer .hypha-credit-link:hover,
+.footer .hypha-credit-link:focus-visible,
+.footer .hypha-credit-link:active {
+  color: #000;
+  text-decoration-line: underline;
+  text-decoration-color: #000;
+  text-decoration-style: solid;
 }
 
 /* ============================================
