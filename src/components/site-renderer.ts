@@ -502,6 +502,13 @@ export class SiteRenderer {
 
         this.app.appendChild(main);
 
+        if (isHomePage) {
+            const footer = document.createElement('footer');
+            footer.className = 'footer';
+            footer.innerHTML = 'Made with 🌱 by <a class="hypha-credit-link" href="https://bsky.app/profile/hypha.coop" target="_blank" rel="noopener noreferrer">Hypha Coop</a>';
+            this.app.appendChild(footer);
+        }
+
         // Dev tool reset button
         const isLocalDev = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
         if (isLocalDev && isLoggedIn()) {
