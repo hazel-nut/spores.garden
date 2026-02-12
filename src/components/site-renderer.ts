@@ -183,6 +183,7 @@ export class SiteRenderer {
                             spores.forEach(spore => {
                                 const sporeEl = document.createElement('div');
                                 sporeEl.title = 'Special Spore';
+                                sporeEl.dataset.originDid = spore.originGardenDid;
                                 sporeEl.style.cursor = 'pointer';
                                 sporeEl.style.width = '60px';
                                 sporeEl.style.height = '60px';

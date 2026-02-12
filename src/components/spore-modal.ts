@@ -16,6 +16,17 @@ interface SporeRecord {
   rkey: string;
 }
 
+function removeHeaderSpore(originDid: string): void {
+  const sporeEl = document.querySelector(`.header-spores [data-origin-did="${originDid}"]`) as HTMLElement | null;
+  if (!sporeEl) return;
+
+  const wrap = sporeEl.parentElement as HTMLElement | null;
+  sporeEl.remove();
+  if (wrap && wrap.childElementCount === 0) {
+    wrap.remove();
+  }
+}
+
 /**
  * Find all spore records for a given origin using backlinks
  * Returns records with ownerDid derived from backlink.did
@@ -231,8 +242,8 @@ export async function showSporeDetailsModal(originGardenDid: string) {
           if (confirmed) {
             try {
               await stealSpore(originDid, visitorDid, prevHandle);
+              removeHeaderSpore(originDid);
               modal.remove();
-              window.dispatchEvent(new CustomEvent('config-updated'));
             } catch (error) {
               await showAlertModal({
                 title: 'Failed to Steal',
