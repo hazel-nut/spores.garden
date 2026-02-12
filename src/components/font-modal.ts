@@ -4,8 +4,8 @@ import { getConfig, updateConfig } from '../config';
 export function showFontModal(): void {
   const config = getConfig();
 
-  const currentHeadingId = config.fontHeading || 'work-sans';
-  const currentBodyId = config.fontBody || 'work-sans';
+  const currentHeadingId = config.headingFont || config.fontHeading || 'work-sans';
+  const currentBodyId = config.bodyFont || config.fontBody || 'work-sans';
 
   // Backdrop
   const backdrop = document.createElement('div');
@@ -63,8 +63,8 @@ export function showFontModal(): void {
 
     // Update in-memory config
     updateConfig({
-      fontHeading: headingSelect.value,
-      fontBody: bodySelect.value,
+      headingFont: headingSelect.value,
+      bodyFont: bodySelect.value,
       theme: {
         ...config.theme,
         fonts: {

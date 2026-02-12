@@ -13,6 +13,14 @@ const CONFIG_RKEY = 'self';
 let currentConfig = null;
 let siteOwnerDid = null;
 
+function getHeadingFontId(config: any): string | undefined {
+  return config?.headingFont || config?.fontHeading;
+}
+
+function getBodyFontId(config: any): string | undefined {
+  return config?.bodyFont || config?.fontBody;
+}
+
 export type UrlIdentifier =
   | { type: 'did'; value: string }
   | { type: 'handle'; value: string };
@@ -375,11 +383,14 @@ export async function loadUserConfig(did) {
     const { theme: generatedTheme } = generateThemeFromDid(did);
     const theme = { ...generatedTheme };
 
+    const headingFont = getHeadingFontId(config);
+    const bodyFont = getBodyFontId(config);
+
     // Override fonts from saved config if present
-    if (config.fontHeading || config.fontBody) {
+    if (headingFont || bodyFont) {
       theme.fonts = {
-        heading: getHeadingFontOption(config.fontHeading).css,
-        body: getBodyFontOption(config.fontBody).css,
+        heading: getHeadingFontOption(headingFont).css,
+        body: getBodyFontOption(bodyFont).css,
       };
     }
 
@@ -448,6 +459,8 @@ export async function loadUserConfig(did) {
     currentConfig = {
       ...defaultConfig,
       ...config,
+      headingFont: headingFont || undefined,
+      bodyFont: bodyFont || undefined,
       theme: {
         ...theme,
       },
@@ -526,8 +539,8 @@ export async function saveConfig({ isInitialOnboarding = false } = {}) {
     $type: CONFIG_COLLECTION,
     title: currentConfig.title,
     subtitle: currentConfig.subtitle,
-    fontHeading: currentConfig.fontHeading || undefined,
-    fontBody: currentConfig.fontBody || undefined,
+    headingFont: currentConfig.headingFont || currentConfig.fontHeading || undefined,
+    bodyFont: currentConfig.bodyFont || currentConfig.fontBody || undefined,
   };
   promises.push(putRecord(CONFIG_COLLECTION, CONFIG_RKEY, configToSave));
 
@@ -691,5 +704,4 @@ export function updateTheme(themeUpdates) {
   };
   return currentConfig.theme;
 }
-
 
