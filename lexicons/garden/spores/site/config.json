@@ -21,15 +21,29 @@
             "maxLength": 2000,
             "description": "Site subtitle"
           },
+          "headingFont": {
+            "type": "string",
+            "maxLength": 50,
+            "knownValues": ["work-sans", "georgia", "jetbrains-mono", "courier-new"],
+            "description": "Heading font ID"
+          },
+          "bodyFont": {
+            "type": "string",
+            "maxLength": 50,
+            "knownValues": ["work-sans", "georgia", "jetbrains-mono", "courier-new"],
+            "description": "Body font ID"
+          },
           "fontHeading": {
             "type": "string",
             "maxLength": 50,
-            "description": "Heading font ID"
+            "knownValues": ["work-sans", "georgia", "jetbrains-mono", "courier-new"],
+            "description": "Deprecated legacy key for heading font ID"
           },
           "fontBody": {
             "type": "string",
             "maxLength": 50,
-            "description": "Body font ID"
+            "knownValues": ["work-sans", "georgia", "jetbrains-mono", "courier-new"],
+            "description": "Deprecated legacy key for body font ID"
           }
         }
       }

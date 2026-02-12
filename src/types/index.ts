@@ -10,6 +10,10 @@ export interface SiteConfig {
   $type: string;
   title: string;
   subtitle?: string;
+  headingFont?: string;
+  bodyFont?: string;
+  fontHeading?: string;
+  fontBody?: string;
   theme?: ThemeConfig;
 }
 
