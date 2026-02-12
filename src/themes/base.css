@@ -1722,6 +1722,7 @@ body.has-pattern .header:has(.controls.open) {
 
 .homepage-view h2 {
   margin-bottom: var(--spacing-md);
+  font-weight: 500;
 }
 
 /* Homepage Mobile Responsive (Phase 10) - Extra small screens (< 480px) */
