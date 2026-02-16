@@ -1,4 +1,4 @@
-import { getRecord, listRecords, resolveHandle, parseAtUri, buildAtUri } from './at-client';
+import { getRecord, listRecords, resolveHandle, parseAtUri, buildAtUri, getProfile } from './at-client';
 import { createRecord, putRecord, getCurrentDid, isLoggedIn, deleteRecord } from './oauth';
 import { generateThemeFromDid } from './themes/engine';
 import { getHeadingFontOption, getBodyFontOption } from './themes/fonts';
@@ -24,6 +24,21 @@ function getBodyFontId(config: any): string | undefined {
 export type UrlIdentifier =
   | { type: 'did'; value: string }
   | { type: 'handle'; value: string };
+
+export function buildGardenPath(identifier: string): string {
+  const normalized = (identifier || '').trim();
+  if (normalized.startsWith('did:')) {
+    return `/${encodeURIComponent(normalized)}`;
+  }
+  return `/@${encodeURIComponent(normalized)}`;
+}
+
+function replaceUrlWithCanonicalGardenPath(identifier: string): void {
+  const canonicalPath = buildGardenPath(identifier);
+  if (location.pathname !== canonicalPath || location.search) {
+    history.replaceState(null, '', canonicalPath);
+  }
+}
 
 /**
  * Seed-based random number generator
@@ -151,7 +166,7 @@ function buildPreviewConfig(did: string) {
 
 /**
  * Parse identifier from URL (supports both path-based and query params)
- * Supports: /@handle, /@did, /handle (legacy shorthand), ?handle=..., ?did=...
+ * Supports: /@handle, /did:plc:..., /@did:... (legacy), /handle (legacy), ?handle=..., ?did=...
  */
 export function parseIdentifierFromUrl(loc: Location = location): UrlIdentifier | null {
   const pathMatch = loc.pathname.match(/^\/@(.+)$/);
@@ -212,10 +227,18 @@ export async function initConfig() {
   if (identifier) {
     if (identifier.type === 'did') {
       siteOwnerDid = identifier.value;
+      try {
+        const profile = await getProfile(siteOwnerDid);
+        const canonicalIdentifier = profile?.handle || siteOwnerDid;
+        replaceUrlWithCanonicalGardenPath(canonicalIdentifier);
+      } catch {
+        replaceUrlWithCanonicalGardenPath(siteOwnerDid);
+      }
     } else if (identifier.type === 'handle') {
       try {
         siteOwnerDid = await resolveHandle(identifier.value);
         console.log(`[initConfig] Resolved handle "${identifier.value}" → DID: ${siteOwnerDid}`);
+        replaceUrlWithCanonicalGardenPath(identifier.value);
       } catch (error) {
         console.warn('[initConfig] Failed to resolve handle, redirecting to homepage:', error);
         // Update URL to homepage (removes the invalid handle from URL)
@@ -704,4 +727,3 @@ export function updateTheme(themeUpdates) {
   };
   return currentConfig.theme;
 }
-
