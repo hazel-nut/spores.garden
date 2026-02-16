@@ -150,6 +150,15 @@ Use this checklist when you are ready to cut over from `garden.spores.*` to `coo
    - `coop.hypha.spores.social.flower`
    - `coop.hypha.spores.social.takenFlower`
    - `coop.hypha.spores.item.specialSpore`
+   - Script:
+     - dry run: `npm run publish-lexicons:repo -- --dry-run`
+     - publish: `npm run publish-lexicons:repo`
+   - Required env:
+     - `ATPROTO_IDENTIFIER`
+     - `ATPROTO_APP_PASSWORD`
+   - Optional env:
+     - `LEXICON_REPO_DID` (defaults to authenticated account DID)
+     - `ATPROTO_PDS_URL` (skip DID document lookup)
 2. Configure DNS `_lexicon` TXT records for each NSID authority group:
    - `_lexicon.site.spores.hypha.coop TXT "did=<authoritative-did>"`
    - `_lexicon.content.spores.hypha.coop TXT "did=<authoritative-did>"`

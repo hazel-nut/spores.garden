@@ -9,6 +9,7 @@
     "preview": "vite preview",
     "start": "vite",
     "publish-lexicons": "node scripts/publish-lexicons.js",
+    "publish-lexicons:repo": "node scripts/publish-lexicons-to-repo.js",
     "typecheck": "tsc --noEmit",
     "typecheck:strict": "tsc --noEmit --noUnusedLocals --noUnusedParameters",
     "check": "npm run typecheck:strict && npm run test:run && npm run build",
