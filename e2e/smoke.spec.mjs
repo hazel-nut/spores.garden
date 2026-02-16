@@ -91,3 +91,36 @@ test('handle route resolves and stays on canonical @handle path', async ({ page 
   await expect(page).toHaveURL(/\/@alice\.test$/);
   await expect(page.locator('.garden-preview__heading')).toContainText('garden could grow here');
 });
+
+test('unknown handle redirects home and shows not-found notification', async ({ page }) => {
+  await page.route('**/xrpc/com.atproto.identity.resolveHandle**', async (route) => {
+    await route.fulfill({
+      status: 400,
+      contentType: 'application/json',
+      body: JSON.stringify({ error: 'InvalidRequest', message: 'Unable to resolve handle' }),
+    });
+  });
+
+  await page.goto('/@missing-handle.test');
+
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.locator('.notification.notification-error .notification-message'))
+    .toContainText('Garden not found: @missing-handle.test');
+});
+
+test('notification can be dismissed', async ({ page }) => {
+  await page.route('**/xrpc/com.atproto.identity.resolveHandle**', async (route) => {
+    await route.fulfill({
+      status: 400,
+      contentType: 'application/json',
+      body: JSON.stringify({ error: 'InvalidRequest', message: 'Unable to resolve handle' }),
+    });
+  });
+
+  await page.goto('/@dismiss-me.test');
+
+  const notification = page.locator('.notification');
+  await expect(notification).toBeVisible();
+  await page.locator('.notification-close').click();
+  await expect(notification).toHaveCount(0);
+});

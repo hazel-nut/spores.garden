@@ -40,6 +40,7 @@ import {
 } from '@atcute/identity-resolver';
 import { Client } from '@atcute/client';
 import type { OAuthConfig, ATClientOptions } from './types';
+import { debugLog } from './utils/logger';
 
 export let authReady = false;
 
@@ -232,7 +233,7 @@ async function restoreSession() {
 
     // Check if session is expired
     if (sessionData.expiresAt && new Date(sessionData.expiresAt).getTime() < Date.now()) {
-      console.log('Stored session has expired, clearing');
+      debugLog('Stored session has expired, clearing');
       sessionStorage.removeItem(SESSION_STORAGE_KEY);
       return;
     }
@@ -249,7 +250,7 @@ async function restoreSession() {
       detail: { loggedIn: true, did: restoredSession.info.sub }
     }));
 
-    console.log('Restored session from storage');
+    debugLog('Restored session from storage');
   } catch (error) {
     console.warn('Failed to restore session from storage:', error);
     // Clear corrupted session data
