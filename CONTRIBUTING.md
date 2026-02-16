@@ -56,3 +56,5 @@ Update docs together with behavior changes:
 
 - `readme.md` for user-facing behavior and commands.
 - `docs/` for implementation details and migration plans.
+- `docs/architecture.md` for module and system-boundary changes.
+- `docs/launch.md` and `docs/release-checklist.md` for release process changes.

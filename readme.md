@@ -124,11 +124,13 @@ Verbose runtime logs are disabled by default. Enable them when debugging with ei
 ## Documentation
 
 - [Documentation Index](docs/README.md) - Entry point for project documentation
+- [Architecture Overview](docs/architecture.md) - Runtime architecture and module boundaries
 - [Layout System Developer Guide](docs/layouts.md) - Learn how to create custom layouts
 - [Special Spore Documentation](docs/special-spore.md) - Special spore mechanics and implementation
 - [NSID Migration Plan](docs/nsid-migration.md) - Namespace migration strategy and launch checklist
 - [Leaflet.pub Schema Notes](docs/leaflet-pub-schema-notes.md) - Notes on leaflet.pub integration
 - [Release Checklist](docs/release-checklist.md) - Final pre-launch verification steps
+- [Launch Runbook](docs/launch.md) - Day-of-launch execution and cutover steps
 - [Rollback Playbook](docs/rollback-playbook.md) - Incident response and rollback levers
 - [Contributing Guide](CONTRIBUTING.md) - Development workflow and quality gates
 
