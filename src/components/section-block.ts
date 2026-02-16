@@ -456,6 +456,7 @@ class SectionBlock extends HTMLElement {
             rkey: profileRkey,
             sectionId: this.section.id,
             displayName: record.value.displayName || '',
+            pronouns: record.value.pronouns || '',
             description: record.value.description || '',
             avatar: record.value.avatar || '',
             banner: record.value.banner || ''
@@ -465,6 +466,7 @@ class SectionBlock extends HTMLElement {
           modal.editProfile({
             sectionId: this.section.id,
             displayName: '',
+            pronouns: '',
             description: '',
             avatar: '',
             banner: ''
@@ -476,6 +478,7 @@ class SectionBlock extends HTMLElement {
         modal.editProfile({
           sectionId: this.section.id,
           displayName: '',
+          pronouns: '',
           description: '',
           avatar: '',
           banner: ''
@@ -486,6 +489,7 @@ class SectionBlock extends HTMLElement {
       modal.editProfile({
         sectionId: this.section.id,
         displayName: '',
+        pronouns: '',
         description: '',
         avatar: '',
         banner: ''
@@ -602,6 +606,7 @@ class SectionBlock extends HTMLElement {
 
             profileData = {
               displayName: record.value.displayName,
+              pronouns: record.value.pronouns,
               description: record.value.description,
               avatar: avatarUrl,
               banner: bannerUrl
@@ -620,6 +625,7 @@ class SectionBlock extends HTMLElement {
         }
         profileData = {
           displayName: profile.displayName,
+          pronouns: (profile as any).pronouns,
           description: profile.description,
           avatar: profile.avatar,
           banner: profile.banner
@@ -630,6 +636,7 @@ class SectionBlock extends HTMLElement {
       const record = {
         value: {
           title: profileData.displayName,
+          pronouns: profileData.pronouns,
           content: profileData.description,
           image: profileData.avatar,
           banner: profileData.banner
