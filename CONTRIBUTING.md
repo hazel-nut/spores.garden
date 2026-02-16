@@ -17,6 +17,19 @@ npm run test:run
 npm run build
 ```
 
+Optional browser smoke tests:
+
+```bash
+npm run test:e2e
+```
+
+If Playwright is not installed yet, run:
+
+```bash
+npm install --save-dev @playwright/test
+npm run e2e:install-browsers
+```
+
 Or run everything at once:
 
 ```bash

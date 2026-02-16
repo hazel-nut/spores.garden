@@ -12,6 +12,9 @@
     "typecheck": "tsc --noEmit",
     "typecheck:strict": "tsc --noEmit --noUnusedLocals --noUnusedParameters",
     "check": "npm run typecheck:strict && npm run test:run && npm run build",
+    "test:e2e": "playwright test",
+    "test:e2e:headed": "playwright test --headed",
+    "e2e:install-browsers": "playwright install chromium",
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:run": "vitest run"

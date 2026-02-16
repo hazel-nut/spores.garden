@@ -6,6 +6,7 @@ Use this checklist before promoting a release to production.
 
 - `npm run typecheck:strict` passes.
 - `npm run test:run` passes.
+- `npm run test:e2e` passes (when Playwright is configured in environment).
 - `npm run build` passes.
 - No unresolved merge conflicts.
 

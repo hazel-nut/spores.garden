@@ -112,6 +112,7 @@ npm run test:run  # Run tests once
 npm run test:ui   # Run tests with UI
 npm run typecheck # TypeScript type check
 npm run check     # Strict pre-launch gate (typecheck + tests + build)
+npm run test:e2e  # Playwright smoke tests (requires @playwright/test + browsers)
 ```
 
 ## Debug Logging
