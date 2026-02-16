@@ -42,6 +42,7 @@ npm run check
 - Keep each branch focused to one change set.
 - Use clear, imperative commit messages.
 - Open PRs against `main` and request review before merge.
+- Use `.github/pull_request_template.md` when opening PRs.
 
 ## Code Style
 
@@ -58,3 +59,4 @@ Update docs together with behavior changes:
 - `docs/` for implementation details and migration plans.
 - `docs/architecture.md` for module and system-boundary changes.
 - `docs/launch.md` and `docs/release-checklist.md` for release process changes.
+- `SECURITY.md` when vulnerability process or security contact changes.

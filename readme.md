@@ -121,6 +121,11 @@ Verbose runtime logs are disabled by default. Enable them when debugging with ei
 - query param: `?debug=1`
 - local storage: `localStorage.setItem('spores.garden.debug', '1')`
 
+## Developer Utilities
+
+- `node scripts/special-spore-probability.js did:plc:...` to check deterministic spore assignment for a DID.
+- `scripts/special-spore-helper.html` browser helper page for manual spore checks.
+
 ## Documentation
 
 - [Documentation Index](docs/README.md) - Entry point for project documentation
@@ -133,6 +138,7 @@ Verbose runtime logs are disabled by default. Enable them when debugging with ei
 - [Launch Runbook](docs/launch.md) - Day-of-launch execution and cutover steps
 - [Rollback Playbook](docs/rollback-playbook.md) - Incident response and rollback levers
 - [Contributing Guide](CONTRIBUTING.md) - Development workflow and quality gates
+- [Security Policy](SECURITY.md) - Vulnerability reporting and disclosure process
 
 ## License
 
