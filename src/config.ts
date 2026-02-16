@@ -103,6 +103,14 @@ export type UrlIdentifier =
   | { type: 'did'; value: string }
   | { type: 'handle'; value: string };
 
+export function buildGardenPath(identifier: string): string {
+  const normalized = (identifier || '').trim();
+  if (normalized.startsWith('did:')) {
+    return `/${encodeURIComponent(normalized)}`;
+  }
+  return `/@${encodeURIComponent(normalized)}`;
+}
+
 /**
  * Seed-based random number generator
  * Creates a deterministic PRNG from a seed string (e.g., DID)
