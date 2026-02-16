@@ -10,6 +10,7 @@ import {
   hasGardenIdentifierInUrl,
   parseIdentifierFromUrl,
 } from './utils/garden-url';
+import { isValidSpore, shouldReceiveInitialSpore } from './utils/spore-validation';
 import {
   NSID_MIGRATION_VERSION,
   SPORE_COLLECTION_KEYS,
@@ -107,57 +108,7 @@ function rewriteRecordPayloadForNamespace(collection: string, value: any, namesp
 }
 
 export type { UrlIdentifier };
-export { buildGardenPath, hasGardenIdentifierInUrl, parseIdentifierFromUrl };
-
-/**
- * Seed-based random number generator
- * Creates a deterministic PRNG from a seed string (e.g., DID)
- */
-function seededRandom(seed: string): () => number {
-  // Hash the seed string to get initial state
-  let hash = 0;
-  for (let i = 0; i < seed.length; i++) {
-    hash = ((hash << 5) - hash) + seed.charCodeAt(i);
-    hash = hash & hash; // Convert to 32bit integer
-  }
-  let state = Math.abs(hash);
-
-  // Linear Congruential Generator
-  return function () {
-    state = (state * 1103515245 + 12345) & 0x7fffffff;
-    return state / 0x7fffffff;
-  };
-}
-
-// Test DIDs that always get a spore (for development/testing)
-const TEST_SPORE_DIDS = [
-  'did:plc:y3lae7hmqiwyq7w2v3bcb2c2', // v's test DID
-];
-
-/**
- * Validate if a spore is authentic (should exist for the given origin DID)
- * 
- * Prevents adversarial actors from creating fake spores by verifying that
- * the origin garden should have received a spore based on deterministic generation.
- * 
- * @param originGardenDid - The DID where the spore was originally created
- * @returns true if the spore is valid (origin DID had 10% chance), false otherwise
- */
-export function isValidSpore(originGardenDid: string): boolean {
-  if (!originGardenDid) {
-    return false;
-  }
-
-  // Test DIDs always get a spore
-  if (TEST_SPORE_DIDS.includes(originGardenDid)) {
-    return true;
-  }
-
-  // Use the same deterministic logic as spore creation
-  const rng = seededRandom(originGardenDid);
-  // 1 in 10 chance - same as in saveConfig
-  return rng() < 0.1;
-}
+export { buildGardenPath, hasGardenIdentifierInUrl, isValidSpore, parseIdentifierFromUrl };
 
 /**
  * Generate initial sections for a new user
@@ -711,8 +662,7 @@ export async function saveConfig({ isInitialOnboarding = false } = {}) {
   }));
 
   if (isFirstTimeConfig) {
-    const rng = seededRandom(did);
-    const shouldGetSpore = TEST_SPORE_DIDS.includes(did) || rng() < 0.1;
+    const shouldGetSpore = shouldReceiveInitialSpore(did);
     if (shouldGetSpore) {
       promises.push(putRecord(collections.SPECIAL_SPORE_COLLECTION, CONFIG_RKEY, {
         $type: collections.SPECIAL_SPORE_COLLECTION,
