@@ -22,9 +22,9 @@ Use this checklist before promoting a release to production.
 
 ## 3) App Rollout Controls
 
-- `src/config/nsid.ts` rollout flag reviewed:
-  - `nsidMigrationEnabled = false` for pre-rollout
-  - `nsidMigrationEnabled = true` for migration rollout
+- `VITE_NSID_MIGRATION_ENABLED` deployment setting reviewed:
+  - unset / `false` for pre-rollout
+  - `true` for migration rollout
 - Owner migration behavior validated in staging.
 
 ## 4) Documentation

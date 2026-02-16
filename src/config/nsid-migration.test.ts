@@ -147,4 +147,34 @@ describe('migrateOwnerNsidRecordsImpl', () => {
       })
     );
   });
+
+  it('stops paginating when cursor repeats to avoid infinite loops', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const deps = makeDeps({
+      listRecords: vi.fn(async (_did: string, collection: string) => {
+        if (collection !== OLD.SECTION_COLLECTION) return { records: [] };
+        return {
+          records: [
+            {
+              uri: `at://${DID}/${OLD.SECTION_COLLECTION}/looped`,
+              value: { $type: OLD.SECTION_COLLECTION, type: 'content' },
+            },
+          ],
+          cursor: 'repeat-cursor',
+        };
+      }),
+      getRecord: vi.fn(async (_did: string, collection: string) => {
+        if (collection === NEW.CONFIG_COLLECTION) return null;
+        if (collection === OLD.CONFIG_COLLECTION) return { value: { title: 'Legacy Title' } };
+        return null;
+      }),
+    });
+
+    await migrateOwnerNsidRecordsImpl(DID, deps);
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining('Aborting pagination for garden.spores.site.section: repeated cursor')
+    );
+    warnSpy.mockRestore();
+  });
 });

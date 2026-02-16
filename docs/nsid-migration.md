@@ -56,7 +56,7 @@ Phase 3 (sunset):
 
 - Runtime has namespace mapping helpers in `src/config/nsid.ts`.
 - Owner-only migration routine is implemented in `src/config/nsid-migration.ts` and wired from `src/config.ts` (`migrateOwnerNsidRecords`).
-- Rollout switch exists via `nsidMigrationEnabled` toggle in `src/config/nsid.ts`.
+- Rollout switch exists via deployment env `VITE_NSID_MIGRATION_ENABLED` (read by `src/config/nsid.ts`).
   - `false`: old-only behavior
   - `true`: read-new/read-old fallback + write-new + owner migration
 
@@ -159,7 +159,7 @@ Use this checklist when you are ready to cut over from `garden.spores.*` to `coo
    - DNS TXT records resolve publicly.
    - Lexicon records are fetchable by NSID from the mapped DID repo.
 4. Merge and deploy app code containing namespace migration support.
-5. Enable rollout switch in `src/config/nsid.ts`:
-   - set `nsidMigrationEnabled = true`
+5. Enable rollout switch in deployment config:
+   - set `VITE_NSID_MIGRATION_ENABLED=true`
 6. Monitor migration logs and owner-session migrations.
 7. After stabilization window, move to sunset policy (read new only).

@@ -121,6 +121,11 @@ Verbose runtime logs are disabled by default. Enable them when debugging with ei
 - query param: `?debug=1`
 - local storage: `localStorage.setItem('spores.garden.debug', '1')`
 
+## Deployment Flags
+
+- `VITE_NSID_MIGRATION_ENABLED=true` enables new-namespace writes plus owner migration.
+- Leave unset (or set to `false`) to keep old-namespace-only behavior.
+
 ## Developer Utilities
 
 - `node scripts/special-spore-probability.js did:plc:...` to check deterministic spore assignment for a DID.

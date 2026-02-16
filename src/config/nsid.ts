@@ -2,8 +2,18 @@ export type NsidNamespace = 'old' | 'new';
 
 export const NSID_MIGRATION_VERSION = 1;
 
-// Keep this disabled until launch cutover testing is explicitly enabled.
-let nsidMigrationEnabled = false;
+function parseBooleanFlag(value: string | undefined): boolean {
+  if (!value) return false;
+  const normalized = value.trim().toLowerCase();
+  return normalized === '1' || normalized === 'true' || normalized === 'yes' || normalized === 'on';
+}
+
+function readNsidMigrationFlagFromEnv(): boolean {
+  const env = (import.meta as any)?.env;
+  return parseBooleanFlag(env?.VITE_NSID_MIGRATION_ENABLED);
+}
+
+let nsidMigrationEnabled = readNsidMigrationFlagFromEnv();
 
 export const OLD_NSID_PREFIX = 'garden.spores';
 export const NEW_NSID_PREFIX = 'coop.hypha.spores';

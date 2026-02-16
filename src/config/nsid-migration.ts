@@ -13,19 +13,35 @@ type ListRecordsFn = (
   options?: { limit?: number; cursor?: string }
 ) => Promise<{ records?: any[]; cursor?: string }>;
 
+const MAX_LIST_PAGES = 200;
+
 async function listAllRecordsForCollection(
   did: string,
   collection: string,
   listRecords: ListRecordsFn
 ): Promise<any[]> {
   const all: any[] = [];
+  const seenCursors = new Set<string>();
+  let pages = 0;
   let cursor: string | undefined = undefined;
   for (;;) {
+    if (pages >= MAX_LIST_PAGES) {
+      console.warn(`[nsid-migration] Aborting pagination for ${collection}: exceeded ${MAX_LIST_PAGES} pages.`);
+      break;
+    }
+    pages += 1;
+
     const response = await listRecords(did, collection, { limit: 100, cursor });
     const records = response?.records || [];
     all.push(...records);
-    if (!response?.cursor) break;
-    cursor = response.cursor;
+    const nextCursor = response?.cursor;
+    if (!nextCursor) break;
+    if (nextCursor === cursor || seenCursors.has(nextCursor)) {
+      console.warn(`[nsid-migration] Aborting pagination for ${collection}: repeated cursor "${nextCursor}".`);
+      break;
+    }
+    seenCursors.add(nextCursor);
+    cursor = nextCursor;
   }
   return all;
 }

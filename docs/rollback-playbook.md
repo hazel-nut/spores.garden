@@ -22,7 +22,7 @@ This playbook defines quick-response actions for launch and post-launch incident
 File: `src/config/nsid.ts`
 
 - Emergency disable migration/write-new behavior:
-  - set `nsidMigrationEnabled = false`
+  - set deployment env `VITE_NSID_MIGRATION_ENABLED=false` and redeploy
 - Effect:
   - write path returns to old namespace
   - reads remain compatible with old namespace
