@@ -52,6 +52,14 @@ Phase 3 (sunset):
 - Read new only (after announced cutoff).
 - Write new only.
 
+## Current Implementation Status
+
+- Runtime has namespace mapping helpers in `src/config/nsid.ts`.
+- Owner-only migration routine is implemented in `src/config.ts` (`migrateOwnerNsidRecords`).
+- Rollout switch exists via `nsidMigrationEnabled` toggle in `src/config/nsid.ts`.
+  - `false`: old-only behavior
+  - `true`: read-new/read-old fallback + write-new + owner migration
+
 ## Migration Trigger
 
 Run migration only when all are true:

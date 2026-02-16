@@ -6,9 +6,10 @@
 import { getBacklinks, getRecord, getProfile } from '../at-client';
 import { getCurrentDid, isLoggedIn, createRecord } from '../oauth';
 import { isValidSpore } from '../config';
+import { getBacklinkQueries, getCollection, getReadCollections } from '../config/nsid';
 import { showConfirmModal, showAlertModal } from './confirm-modal';
 
-const SPECIAL_SPORE_COLLECTION = 'garden.spores.item.specialSpore';
+const SPECIAL_SPORE_COLLECTION = getCollection('itemSpecialSpore');
 
 export interface SporeInfo {
   originGardenDid: string;
@@ -21,12 +22,12 @@ export interface SporeInfo {
  */
 export async function findSporeByOrigin(originGardenDid: string): Promise<SporeInfo | null> {
   try {
-    const backlinksResponse = await getBacklinks(
-      originGardenDid,
-      `${SPECIAL_SPORE_COLLECTION}:subject`,
-      { limit: 100 }
+    const backlinkResponses = await Promise.all(
+      getBacklinkQueries('itemSpecialSpore', 'subject').map((q) =>
+        getBacklinks(originGardenDid, q, { limit: 100 }).catch(() => null)
+      )
     );
-    const backlinks = backlinksResponse.records || backlinksResponse.links || [];
+    const backlinks = backlinkResponses.flatMap((response: any) => response?.records || response?.links || []);
 
     if (backlinks.length === 0) return null;
 
@@ -78,8 +79,12 @@ export async function findAllHeldSpores(gardenOwnerDid: string): Promise<SporeIn
     }
 
     const { listRecords } = await import('../at-client');
-    const ownedSpores = await listRecords(gardenOwnerDid, SPECIAL_SPORE_COLLECTION, { limit: 10 });
-    const sporeRecords = ownedSpores?.records || [];
+    const ownedResponses = await Promise.all(
+      getReadCollections('itemSpecialSpore').map((collection) =>
+        listRecords(gardenOwnerDid, collection, { limit: 10 }).catch(() => ({ records: [] }))
+      )
+    );
+    const sporeRecords = ownedResponses.flatMap((response: any) => response.records || []);
 
     for (const record of sporeRecords) {
       const originDid = record.value?.subject;

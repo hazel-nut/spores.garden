@@ -2,7 +2,7 @@
 
 Source: https://github.com/hyphacoop/spores.garden/issues/1#issuecomment-3893885228
 
-- [ ] `in-progress` Decide and execute NSID finalization strategy (`garden.spores.*` vs `coop.hypha.spores.*`) with migration plan.
+- [x] `completed` Decide and execute NSID finalization strategy (`garden.spores.*` vs `coop.hypha.spores.*`) with migration plan.
 - [x] `completed` Make `garden.spores.site.section` more idiomatic and less overloaded.
 - [x] `completed` Remove dual-path content semantics and pick one canonical content path.
 - [x] `completed` Complete ref-first migration and deprecate `collection` + `rkey` fields.
@@ -14,17 +14,17 @@ Source: https://github.com/hyphacoop/spores.garden/issues/1#issuecomment-3893885
 
 Reference: `docs/nsid-migration.md`
 
-- [ ] `in-progress` Add `coop.hypha.spores.*` lexicons mirroring current `garden.spores.*` schemas.
-- [ ] `pending` Introduce namespace constants + collection mapping helpers (old->new, new->old) in runtime.
-- [ ] `pending` Implement read strategy: prefer new namespace, fallback to old namespace.
-- [ ] `pending` Implement write strategy: new namespace only.
-- [ ] `pending` Add owner-only migration routine (logged-in owner gate + idempotent marker).
-- [ ] `pending` Implement URI rewrite utility for section/layout refs and records arrays.
-- [ ] `pending` Wire migration trigger into app startup for owner sessions.
-- [ ] `pending` Add migration telemetry/logging and safe retry behavior.
-- [ ] `pending` Add tests for new-user new-namespace path.
-- [ ] `pending` Add tests for old-user migration + resume behavior.
-- [ ] `pending` Add stabilization switch/flag for temporary rollback to old writes if needed.
+- [x] `completed` Add `coop.hypha.spores.*` lexicons mirroring current `garden.spores.*` schemas.
+- [x] `completed` Introduce namespace constants + collection mapping helpers (old->new, new->old) in runtime.
+- [x] `completed` Implement read strategy: prefer new namespace, fallback to old namespace.
+- [x] `completed` Implement write strategy: new namespace only (gated by migration flag).
+- [x] `completed` Add owner-only migration routine (logged-in owner gate + idempotent marker).
+- [x] `completed` Implement URI rewrite utility for section/layout refs and records arrays.
+- [x] `completed` Wire migration trigger into app startup for owner sessions.
+- [x] `completed` Add migration telemetry/logging and safe retry behavior.
+- [x] `completed` Add tests for new-user new-namespace path.
+- [x] `completed` Add tests for old-user migration + resume behavior.
+- [x] `completed` Add stabilization switch/flag for temporary rollback to old writes if needed.
 
 ## Implemented Branches (Unmerged)
 

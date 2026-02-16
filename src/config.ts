@@ -3,11 +3,18 @@ import { createRecord, putRecord, getCurrentDid, isLoggedIn, deleteRecord } from
 import { generateThemeFromDid } from './themes/engine';
 import { getHeadingFontOption, getBodyFontOption } from './themes/fonts';
 import { registerGarden } from './components/recent-gardens';
+import {
+  NSID_MIGRATION_VERSION,
+  SPORE_COLLECTION_KEYS,
+  getCollection,
+  getReadNamespaces,
+  getWriteNamespace,
+  isNsidMigrationEnabled,
+  mapCollectionToNamespace,
+  rewriteAtUriNamespace,
+  rewriteAtUrisNamespace,
+} from './config/nsid';
 
-const CONFIG_COLLECTION = 'garden.spores.site.config';
-const SECTION_COLLECTION = 'garden.spores.site.section';
-const LAYOUT_COLLECTION = 'garden.spores.site.layout';
-const SPECIAL_SPORE_COLLECTION = 'garden.spores.item.specialSpore';
 const CONFIG_RKEY = 'self';
 
 let currentConfig = null;
@@ -19,6 +26,77 @@ function getHeadingFontId(config: any): string | undefined {
 
 function getBodyFontId(config: any): string | undefined {
   return config?.bodyFont || config?.fontBody;
+}
+
+function getCollections(namespace = getWriteNamespace()) {
+  return {
+    CONFIG_COLLECTION: getCollection('siteConfig', namespace),
+    SECTION_COLLECTION: getCollection('siteSection', namespace),
+    LAYOUT_COLLECTION: getCollection('siteLayout', namespace),
+    SPECIAL_SPORE_COLLECTION: getCollection('itemSpecialSpore', namespace),
+    PROFILE_COLLECTION: getCollection('siteProfile', namespace),
+    CONTENT_TEXT_COLLECTION: getCollection('contentText', namespace),
+  };
+}
+
+function getSectionReference(section: any): { collection?: string; rkey?: string } {
+  const parsed = section?.ref ? parseAtUri(section.ref) : null;
+  return {
+    collection: parsed?.collection || section?.collection,
+    rkey: parsed?.rkey || section?.rkey,
+  };
+}
+
+function normalizeSectionForNamespace(section: any, namespace = getWriteNamespace()): any {
+  if (!section) return section;
+  const normalized = { ...section };
+
+  if (normalized.ref) {
+    normalized.ref = rewriteAtUriNamespace(normalized.ref, namespace);
+  }
+  if (Array.isArray(normalized.records)) {
+    normalized.records = rewriteAtUrisNamespace(normalized.records, namespace);
+  }
+  if (normalized.collection) {
+    normalized.collection = mapCollectionToNamespace(normalized.collection, namespace);
+  }
+
+  const sectionRef = getSectionReference(normalized);
+  if (sectionRef.collection && sectionRef.rkey && !normalized.ref) {
+    const did = getCurrentDid() || siteOwnerDid;
+    if (did) {
+      normalized.ref = buildAtUri(did, sectionRef.collection, sectionRef.rkey);
+    }
+  }
+
+  return normalized;
+}
+
+function rewriteRecordPayloadForNamespace(collection: string, value: any, namespace = getWriteNamespace()): any {
+  if (!value || typeof value !== 'object') return value;
+  const rewritten = { ...value };
+
+  if (rewritten.$type && typeof rewritten.$type === 'string') {
+    rewritten.$type = mapCollectionToNamespace(rewritten.$type, namespace);
+  }
+
+  if (collection.endsWith('.site.layout') && Array.isArray(rewritten.sections)) {
+    rewritten.sections = rewriteAtUrisNamespace(rewritten.sections, namespace);
+  }
+
+  if (collection.endsWith('.site.section')) {
+    if (rewritten.ref) rewritten.ref = rewriteAtUriNamespace(rewritten.ref, namespace);
+    if (Array.isArray(rewritten.records)) rewritten.records = rewriteAtUrisNamespace(rewritten.records, namespace);
+    if (rewritten.collection) rewritten.collection = mapCollectionToNamespace(rewritten.collection, namespace);
+    if (rewritten.data && typeof rewritten.data === 'object') {
+      rewritten.data = { ...rewritten.data };
+      if (rewritten.data.ref) rewritten.data.ref = rewriteAtUriNamespace(rewritten.data.ref, namespace);
+      if (Array.isArray(rewritten.data.records)) rewritten.data.records = rewriteAtUrisNamespace(rewritten.data.records, namespace);
+      if (rewritten.data.collection) rewritten.data.collection = mapCollectionToNamespace(rewritten.data.collection, namespace);
+    }
+  }
+
+  return rewritten;
 }
 
 export type UrlIdentifier =
@@ -79,7 +157,8 @@ export function isValidSpore(originGardenDid: string): boolean {
  * Generate initial sections for a new user
  * Creates a fixed set of sections in a consistent order
  */
-function generateInitialSections(did: string): any[] {
+function generateInitialSections(did: string, namespace = getWriteNamespace()): any[] {
+  const collections = getCollections(namespace);
   const sections: any[] = [];
   let sectionId = 0;
 
@@ -87,8 +166,8 @@ function generateInitialSections(did: string): any[] {
   sections.push({
     id: `section-${sectionId++}`,
     type: 'profile',
-    ref: buildAtUri(did, 'garden.spores.site.profile', 'self'),
-    collection: 'garden.spores.site.profile',
+    ref: buildAtUri(did, collections.PROFILE_COLLECTION, 'self'),
+    collection: collections.PROFILE_COLLECTION,
     rkey: 'self',
     layout: 'profile'
   });
@@ -97,7 +176,7 @@ function generateInitialSections(did: string): any[] {
   sections.push({
     id: `section-${sectionId++}`,
     type: 'content',
-    collection: 'garden.spores.content.text',
+    collection: collections.CONTENT_TEXT_COLLECTION,
     format: 'markdown',
     title: 'Welcome'
   });
@@ -236,6 +315,8 @@ export async function initConfig() {
     }
   }
 
+  await migrateOwnerNsidRecords(siteOwnerDid);
+
   const loaded = await loadUserConfig(siteOwnerDid);
   if (loaded === null) {
     console.log('[initConfig] loadUserConfig returned null — building preview config');
@@ -281,6 +362,79 @@ export function setSiteOwnerDid(did) {
   siteOwnerDid = did;
 }
 
+async function listAllRecordsForCollection(did: string, collection: string): Promise<any[]> {
+  const all: any[] = [];
+  let cursor: string | undefined;
+  let loops = 0;
+  while (loops < 50) {
+    loops += 1;
+    const response = await listRecords(did, collection, { limit: 100, cursor }).catch(() => null);
+    if (!response?.records?.length) break;
+    all.push(...response.records);
+    if (!response.cursor) break;
+    cursor = response.cursor;
+  }
+  return all;
+}
+
+export async function migrateOwnerNsidRecords(did: string): Promise<void> {
+  if (!isNsidMigrationEnabled()) return;
+  if (!isLoggedIn() || getCurrentDid() !== did) return;
+
+  const newCollections = getCollections('new');
+  const oldCollections = getCollections('old');
+
+  try {
+    const existingNewConfig = await getRecord(did, newCollections.CONFIG_COLLECTION, CONFIG_RKEY);
+    if (existingNewConfig?.value?.nsidMigrationVersion >= NSID_MIGRATION_VERSION) {
+      return;
+    }
+
+    for (const key of SPORE_COLLECTION_KEYS) {
+      const oldCollection = getCollection(key, 'old');
+      const newCollection = getCollection(key, 'new');
+
+      if (key === 'siteConfig' || key === 'siteLayout' || key === 'siteProfile') {
+        const oldRecord = await getRecord(did, oldCollection, CONFIG_RKEY);
+        if (!oldRecord?.value) continue;
+        const rewritten = rewriteRecordPayloadForNamespace(oldCollection, oldRecord.value, 'new');
+        await putRecord(newCollection, CONFIG_RKEY, {
+          ...rewritten,
+          $type: newCollection,
+        });
+        continue;
+      }
+
+      const oldRecords = await listAllRecordsForCollection(did, oldCollection);
+      for (const record of oldRecords) {
+        const rkey = record?.uri?.split('/').pop();
+        if (!rkey || !record?.value) continue;
+        const rewritten = rewriteRecordPayloadForNamespace(oldCollection, record.value, 'new');
+        await putRecord(newCollection, rkey, {
+          ...rewritten,
+          $type: newCollection,
+        });
+      }
+    }
+
+    const latestNewConfig = await getRecord(did, newCollections.CONFIG_COLLECTION, CONFIG_RKEY);
+    const oldConfig = await getRecord(did, oldCollections.CONFIG_COLLECTION, CONFIG_RKEY);
+    const baseConfig = latestNewConfig?.value || oldConfig?.value || {
+      title: 'My Garden',
+      subtitle: '',
+    };
+
+    await putRecord(newCollections.CONFIG_COLLECTION, CONFIG_RKEY, {
+      ...baseConfig,
+      $type: newCollections.CONFIG_COLLECTION,
+      nsidMigrationVersion: NSID_MIGRATION_VERSION,
+    });
+    console.log(`[nsid-migration] Completed migration for ${did}`);
+  } catch (error) {
+    console.error(`[nsid-migration] Failed migration for ${did}:`, error);
+  }
+}
+
 async function migrateSections(did: string) {
   // Only attempt migration if logged in and viewing own garden
   if (!isLoggedIn() || getCurrentDid() !== did) {
@@ -288,6 +442,7 @@ async function migrateSections(did: string) {
     return;
   }
   const OLD_SECTIONS_COLLECTION = 'garden.spores.site.sections';
+  const collections = getCollections();
   try {
     const oldSectionsRecord = await getRecord(did, OLD_SECTIONS_COLLECTION, CONFIG_RKEY);
     if (oldSectionsRecord && oldSectionsRecord.value && oldSectionsRecord.value.sections) {
@@ -298,7 +453,7 @@ async function migrateSections(did: string) {
 
       for (const section of sections) {
         const sectionRecord = {
-          $type: SECTION_COLLECTION,
+          $type: collections.SECTION_COLLECTION,
           type: section.type,
           title: section.title || undefined,
           layout: section.layout || undefined,
@@ -311,15 +466,15 @@ async function migrateSections(did: string) {
           hideHeader: section.hideHeader || undefined,
         };
 
-        const response = await createRecord(SECTION_COLLECTION, sectionRecord);
+        const response = await createRecord(collections.SECTION_COLLECTION, sectionRecord);
         sectionUris.push(response.uri);
       }
 
       const layoutRecord = {
-        $type: LAYOUT_COLLECTION,
+        $type: collections.LAYOUT_COLLECTION,
         sections: sectionUris,
       };
-      await putRecord(LAYOUT_COLLECTION, CONFIG_RKEY, layoutRecord);
+      await putRecord(collections.LAYOUT_COLLECTION, CONFIG_RKEY, layoutRecord);
 
       await deleteRecord(OLD_SECTIONS_COLLECTION, CONFIG_RKEY);
       console.log(`Migration successful for user: ${did}`);
@@ -348,11 +503,26 @@ export async function loadUserConfig(did) {
   try {
     await migrateSections(did);
 
-    let configRecord = await getRecord(did, CONFIG_COLLECTION, CONFIG_RKEY);
-    let layoutRecord = await getRecord(did, LAYOUT_COLLECTION, CONFIG_RKEY);
+    let activeNamespace = getReadNamespaces()[0];
+    let activeCollections = getCollections(activeNamespace);
+    let configRecord: any = null;
+    let layoutRecord: any = null;
 
-    console.log(`[loadUserConfig] configRecord (${CONFIG_COLLECTION}):`, configRecord ? 'found' : 'null');
-    console.log(`[loadUserConfig] layoutRecord (${LAYOUT_COLLECTION}):`, layoutRecord ? 'found' : 'null');
+    for (const namespace of getReadNamespaces()) {
+      const collections = getCollections(namespace);
+      const candidateConfig = await getRecord(did, collections.CONFIG_COLLECTION, CONFIG_RKEY);
+      const candidateLayout = await getRecord(did, collections.LAYOUT_COLLECTION, CONFIG_RKEY);
+      if (candidateConfig || candidateLayout) {
+        activeNamespace = namespace;
+        activeCollections = collections;
+        configRecord = candidateConfig;
+        layoutRecord = candidateLayout;
+        break;
+      }
+    }
+
+    console.log(`[loadUserConfig] configRecord (${activeCollections.CONFIG_COLLECTION}):`, configRecord ? 'found' : 'null');
+    console.log(`[loadUserConfig] layoutRecord (${activeCollections.LAYOUT_COLLECTION}):`, layoutRecord ? 'found' : 'null');
     if (layoutRecord?.value) {
       console.log(`[loadUserConfig] layout sections:`, layoutRecord.value.sections);
     }
@@ -363,11 +533,11 @@ export async function loadUserConfig(did) {
       if (layoutRecord) {
         // Create a default config record
         const defaultConfigToSave = {
-          $type: CONFIG_COLLECTION,
+          $type: activeCollections.CONFIG_COLLECTION,
           title: 'My Garden', // Default title
           subtitle: '',
         };
-        await putRecord(CONFIG_COLLECTION, CONFIG_RKEY, defaultConfigToSave);
+        await putRecord(activeCollections.CONFIG_COLLECTION, CONFIG_RKEY, defaultConfigToSave);
         configRecord = { value: defaultConfigToSave }; // Use this new config
         console.log('[loadUserConfig] Created default garden config record during loading.');
       } else {
@@ -423,7 +593,7 @@ export async function loadUserConfig(did) {
       // rkey = the target record's rkey within the collection (from the record value, e.g. 'self' for profiles)
       sections = pdsSectionResults.filter(Boolean).map(record => {
         const sectionRkey = record.uri?.split('/').pop();
-        const val = record.value;
+        const val = normalizeSectionForNamespace(record.value, getWriteNamespace());
         // Construct ref from collection+rkey when absent (backward compat)
         let ref = val.ref;
         if (!ref && val.collection && val.rkey) {
@@ -448,7 +618,7 @@ export async function loadUserConfig(did) {
       sections.forEach((s, i) => console.log(`[loadUserConfig]   [${i}] type=${s.type} title=${s.title || '(none)'} rkey=${s.rkey || '(none)'} sectionRkey=${s.sectionRkey}`));
     } else {
       // No layout with sections — generate initial defaults for new/empty gardens
-      sections = generateInitialSections(did);
+      sections = generateInitialSections(did, getWriteNamespace());
       const reason = !layoutRecord ? 'no layout record' :
         !layoutRecord.value ? 'layout record has no value' :
         !Array.isArray(layoutRecord.value.sections) ? 'layout sections is not an array' :
@@ -488,8 +658,12 @@ export async function hasUserConfig(did) {
 
   try {
     // Only config record is required - style and sections are optional
-    const configRecord = await getRecord(did, CONFIG_COLLECTION, CONFIG_RKEY);
-    return configRecord !== null;
+    for (const namespace of getReadNamespaces()) {
+      const collection = getCollection('siteConfig', namespace);
+      const configRecord = await getRecord(did, collection, CONFIG_RKEY);
+      if (configRecord) return true;
+    }
+    return false;
   } catch (error) {
     return false;
   }
@@ -522,11 +696,13 @@ export async function saveConfig({ isInitialOnboarding = false } = {}) {
   if (!siteOwnerDid) {
     siteOwnerDid = did;
   }
+  const writeNamespace = getWriteNamespace();
+  const collections = getCollections(writeNamespace);
 
   let isFirstTimeConfig = isInitialOnboarding;
   if (!isInitialOnboarding) {
     try {
-      const existingConfig = await getRecord(did, CONFIG_COLLECTION, CONFIG_RKEY);
+      const existingConfig = await getRecord(did, collections.CONFIG_COLLECTION, CONFIG_RKEY);
       isFirstTimeConfig = !existingConfig;
     } catch (error) {
       isFirstTimeConfig = true;
@@ -536,17 +712,21 @@ export async function saveConfig({ isInitialOnboarding = false } = {}) {
   const promises: Promise<any>[] = [];
 
   const configToSave: any = {
-    $type: CONFIG_COLLECTION,
+    $type: collections.CONFIG_COLLECTION,
     title: currentConfig.title,
     subtitle: currentConfig.subtitle,
     headingFont: currentConfig.headingFont || currentConfig.fontHeading || undefined,
     bodyFont: currentConfig.bodyFont || currentConfig.fontBody || undefined,
   };
-  promises.push(putRecord(CONFIG_COLLECTION, CONFIG_RKEY, configToSave));
+  if (isNsidMigrationEnabled()) {
+    configToSave.nsidMigrationVersion = NSID_MIGRATION_VERSION;
+  }
+  promises.push(putRecord(collections.CONFIG_COLLECTION, CONFIG_RKEY, configToSave));
 
-  const updatedSections = await Promise.all(currentConfig.sections.map(async (section) => {
+  const updatedSections = await Promise.all(currentConfig.sections.map(async (rawSection) => {
+    const section = normalizeSectionForNamespace(rawSection, writeNamespace);
     const sectionRecord = {
-      $type: SECTION_COLLECTION,
+      $type: collections.SECTION_COLLECTION,
       type: section.type,
       title: section.title || undefined,
       layout: section.layout || undefined,
@@ -561,19 +741,19 @@ export async function saveConfig({ isInitialOnboarding = false } = {}) {
     };
 
     if (section.sectionRkey) {
-      await putRecord(SECTION_COLLECTION, section.sectionRkey, sectionRecord);
+      await putRecord(collections.SECTION_COLLECTION, section.sectionRkey, sectionRecord);
       return section;
     } else {
-      const response = await createRecord(SECTION_COLLECTION, sectionRecord);
+      const response = await createRecord(collections.SECTION_COLLECTION, sectionRecord);
       const newSectionRkey = response.uri.split('/').pop();
       return { ...section, sectionRkey: newSectionRkey, uri: response.uri };
     }
   }));
   currentConfig.sections = updatedSections;
 
-  const sectionUris = currentConfig.sections.map(s => `at://${did}/${SECTION_COLLECTION}/${s.sectionRkey}`);
-  promises.push(putRecord(LAYOUT_COLLECTION, CONFIG_RKEY, {
-    $type: LAYOUT_COLLECTION,
+  const sectionUris = currentConfig.sections.map(s => `at://${did}/${collections.SECTION_COLLECTION}/${s.sectionRkey}`);
+  promises.push(putRecord(collections.LAYOUT_COLLECTION, CONFIG_RKEY, {
+    $type: collections.LAYOUT_COLLECTION,
     sections: sectionUris,
   }));
 
@@ -581,8 +761,8 @@ export async function saveConfig({ isInitialOnboarding = false } = {}) {
     const rng = seededRandom(did);
     const shouldGetSpore = TEST_SPORE_DIDS.includes(did) || rng() < 0.1;
     if (shouldGetSpore) {
-      promises.push(putRecord(SPECIAL_SPORE_COLLECTION, CONFIG_RKEY, {
-        $type: SPECIAL_SPORE_COLLECTION,
+      promises.push(putRecord(collections.SPECIAL_SPORE_COLLECTION, CONFIG_RKEY, {
+        $type: collections.SPECIAL_SPORE_COLLECTION,
         subject: did,
         createdAt: new Date().toISOString()
       }));
@@ -594,7 +774,7 @@ export async function saveConfig({ isInitialOnboarding = false } = {}) {
       if (bskyProfileRecord?.value) {
         const bskyProfile = bskyProfileRecord.value;
         const profileRecord: any = {
-          $type: 'garden.spores.site.profile',
+          $type: collections.PROFILE_COLLECTION,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
           displayName: bskyProfile.displayName,
@@ -602,7 +782,7 @@ export async function saveConfig({ isInitialOnboarding = false } = {}) {
           avatar: bskyProfile.avatar,
           banner: bskyProfile.banner,
         };
-        promises.push(putRecord('garden.spores.site.profile', 'self', profileRecord));
+        promises.push(putRecord(collections.PROFILE_COLLECTION, 'self', profileRecord));
       }
     } catch (error) {
       console.warn('Failed to clone Bluesky profile:', error);
@@ -642,8 +822,9 @@ export function updateSection(id, updates) {
 export async function removeSection(id) {
   const sectionToRemove = currentConfig.sections.find(section => section.id === id);
   if (sectionToRemove && sectionToRemove.sectionRkey && siteOwnerDid) {
+    const collections = getCollections();
     try {
-      await deleteRecord(SECTION_COLLECTION, sectionToRemove.sectionRkey);
+      await deleteRecord(collections.SECTION_COLLECTION, sectionToRemove.sectionRkey);
     } catch (error) {
       console.error(`Failed to delete section record ${sectionToRemove.sectionRkey} from PDS:`, error);
       // Continue with local removal even if PDS delete fails
@@ -704,4 +885,3 @@ export function updateTheme(themeUpdates) {
   };
   return currentConfig.theme;
 }
-
