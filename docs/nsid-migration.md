@@ -55,7 +55,7 @@ Phase 3 (sunset):
 ## Current Implementation Status
 
 - Runtime has namespace mapping helpers in `src/config/nsid.ts`.
-- Owner-only migration routine is implemented in `src/config.ts` (`migrateOwnerNsidRecords`).
+- Owner-only migration routine is implemented in `src/config/nsid-migration.ts` and wired from `src/config.ts` (`migrateOwnerNsidRecords`).
 - Rollout switch exists via `nsidMigrationEnabled` toggle in `src/config/nsid.ts`.
   - `false`: old-only behavior
   - `true`: read-new/read-old fallback + write-new + owner migration
