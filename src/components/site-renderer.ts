@@ -44,7 +44,12 @@ export class SiteRenderer {
 
     async render() {
         const myRenderId = ++this.renderId;
-        const config = getConfig();
+        const config = getConfig() || {
+            title: 'spores.garden',
+            subtitle: '',
+            sections: [],
+            theme: {},
+        };
         const ownerDid = getSiteOwnerDid();
         const isOwnerLoggedIn = isOwner();
         const isHomePage = !SiteRouter.isViewingProfile();
