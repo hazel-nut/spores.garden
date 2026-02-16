@@ -36,6 +36,7 @@ Use this checklist before promoting a release to production.
 ## 5) Release
 
 - Execute day-of steps from `docs/launch.md`.
+- Execute manual browser QA from `docs/manual-qa-checklist.md`.
 - Tag release commit.
 - Deploy artifacts.
 - Smoke test:
