@@ -7,6 +7,12 @@ npm install
 npm run dev
 ```
 
+Optional local config:
+
+```bash
+cp .env.example .env.local
+```
+
 ## Quality Gates
 
 Before opening a PR:
@@ -60,3 +66,4 @@ Update docs together with behavior changes:
 - `docs/architecture.md` for module and system-boundary changes.
 - `docs/launch.md` and `docs/release-checklist.md` for release process changes.
 - `SECURITY.md` when vulnerability process or security contact changes.
+- `CODE_OF_CONDUCT.md` when community/reporting process changes.

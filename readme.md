@@ -125,6 +125,7 @@ Verbose runtime logs are disabled by default. Enable them when debugging with ei
 
 - `VITE_NSID_MIGRATION_ENABLED=true` enables new-namespace writes plus owner migration.
 - Leave unset (or set to `false`) to keep old-namespace-only behavior.
+- Copy `.env.example` to `.env.local` for local development overrides.
 
 ## Developer Utilities
 
@@ -144,6 +145,7 @@ Verbose runtime logs are disabled by default. Enable them when debugging with ei
 - [Rollback Playbook](docs/rollback-playbook.md) - Incident response and rollback levers
 - [Contributing Guide](CONTRIBUTING.md) - Development workflow and quality gates
 - [Security Policy](SECURITY.md) - Vulnerability reporting and disclosure process
+- [Code of Conduct](CODE_OF_CONDUCT.md) - Community participation expectations
 
 ## License
 

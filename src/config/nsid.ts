@@ -2,7 +2,7 @@ export type NsidNamespace = 'old' | 'new';
 
 export const NSID_MIGRATION_VERSION = 1;
 
-function parseBooleanFlag(value: string | undefined): boolean {
+export function parseNsidMigrationEnabled(value: string | undefined): boolean {
   if (!value) return false;
   const normalized = value.trim().toLowerCase();
   return normalized === '1' || normalized === 'true' || normalized === 'yes' || normalized === 'on';
@@ -10,7 +10,7 @@ function parseBooleanFlag(value: string | undefined): boolean {
 
 function readNsidMigrationFlagFromEnv(): boolean {
   const env = (import.meta as any)?.env;
-  return parseBooleanFlag(env?.VITE_NSID_MIGRATION_ENABLED);
+  return parseNsidMigrationEnabled(env?.VITE_NSID_MIGRATION_ENABLED);
 }
 
 let nsidMigrationEnabled = readNsidMigrationFlagFromEnv();
