@@ -3,6 +3,7 @@ import { createRecord, putRecord, getCurrentDid, isLoggedIn, deleteRecord } from
 import { generateThemeFromDid } from './themes/engine';
 import { getHeadingFontOption, getBodyFontOption } from './themes/fonts';
 import { registerGarden } from './components/recent-gardens';
+import { debugLog } from './utils/logger';
 import {
   NSID_MIGRATION_VERSION,
   SPORE_COLLECTION_KEYS,
@@ -294,7 +295,7 @@ export function hasGardenIdentifierInUrl(loc: Location = location): boolean {
  */
 export async function initConfig() {
   const identifier = parseIdentifierFromUrl();
-  console.log('[initConfig] URL identifier:', identifier);
+  debugLog('[initConfig] URL identifier:', identifier);
 
   if (identifier) {
     if (identifier.type === 'did') {
@@ -302,7 +303,7 @@ export async function initConfig() {
     } else if (identifier.type === 'handle') {
       try {
         siteOwnerDid = await resolveHandle(identifier.value);
-        console.log(`[initConfig] Resolved handle "${identifier.value}" → DID: ${siteOwnerDid}`);
+        debugLog(`[initConfig] Resolved handle "${identifier.value}" → DID: ${siteOwnerDid}`);
       } catch (error) {
         console.warn('[initConfig] Failed to resolve handle, redirecting to homepage:', error);
         // Update URL to homepage (removes the invalid handle from URL)
@@ -316,7 +317,7 @@ export async function initConfig() {
     }
   } else {
     siteOwnerDid = getCurrentDid(); // Fallback to logged-in user
-    console.log('[initConfig] No URL identifier, fallback to logged-in DID:', siteOwnerDid);
+    debugLog('[initConfig] No URL identifier, fallback to logged-in DID:', siteOwnerDid);
     if (!siteOwnerDid) {
       currentConfig = getDefaultConfig();
       return currentConfig;
@@ -327,7 +328,7 @@ export async function initConfig() {
 
   const loaded = await loadUserConfig(siteOwnerDid);
   if (loaded === null) {
-    console.log('[initConfig] loadUserConfig returned null — building preview config');
+    debugLog('[initConfig] loadUserConfig returned null — building preview config');
     // No config record: set preview config so the app can render theme + flower
     currentConfig = buildPreviewConfig(siteOwnerDid);
   }
@@ -437,7 +438,7 @@ export async function migrateOwnerNsidRecords(did: string): Promise<void> {
       $type: newCollections.CONFIG_COLLECTION,
       nsidMigrationVersion: NSID_MIGRATION_VERSION,
     });
-    console.log(`[nsid-migration] Completed migration for ${did}`);
+    debugLog(`[nsid-migration] Completed migration for ${did}`);
   } catch (error) {
     console.error(`[nsid-migration] Failed migration for ${did}:`, error);
   }
@@ -446,7 +447,7 @@ export async function migrateOwnerNsidRecords(did: string): Promise<void> {
 async function migrateSections(did: string) {
   // Only attempt migration if logged in and viewing own garden
   if (!isLoggedIn() || getCurrentDid() !== did) {
-    console.log(`Skipping migration for ${did}: Not logged in or not owner.`);
+    debugLog(`Skipping migration for ${did}: Not logged in or not owner.`);
     return;
   }
   const OLD_SECTIONS_COLLECTION = 'garden.spores.site.sections';
@@ -454,7 +455,7 @@ async function migrateSections(did: string) {
   try {
     const oldSectionsRecord = await getRecord(did, OLD_SECTIONS_COLLECTION, CONFIG_RKEY);
     if (oldSectionsRecord && oldSectionsRecord.value && oldSectionsRecord.value.sections) {
-      console.log(`Migrating old sections record for user: ${did}`);
+      debugLog(`Migrating old sections record for user: ${did}`);
 
       const sections = oldSectionsRecord.value.sections as any[];
       const sectionUris: string[] = [];
@@ -485,7 +486,7 @@ async function migrateSections(did: string) {
       await putRecord(collections.LAYOUT_COLLECTION, CONFIG_RKEY, layoutRecord);
 
       await deleteRecord(OLD_SECTIONS_COLLECTION, CONFIG_RKEY);
-      console.log(`Migration successful for user: ${did}`);
+      debugLog(`Migration successful for user: ${did}`);
     }
   } catch (error) {
     if (error.message.includes('not found')) {
@@ -501,12 +502,12 @@ async function migrateSections(did: string) {
  */
 export async function loadUserConfig(did) {
   if (!did) {
-    console.log('[loadUserConfig] No DID provided, returning default config');
+    debugLog('[loadUserConfig] No DID provided, returning default config');
     currentConfig = getDefaultConfig();
     return null;
   }
 
-  console.log(`[loadUserConfig] Loading config for DID: ${did}`);
+  debugLog(`[loadUserConfig] Loading config for DID: ${did}`);
 
   try {
     await migrateSections(did);
@@ -529,10 +530,10 @@ export async function loadUserConfig(did) {
       }
     }
 
-    console.log(`[loadUserConfig] configRecord (${activeCollections.CONFIG_COLLECTION}):`, configRecord ? 'found' : 'null');
-    console.log(`[loadUserConfig] layoutRecord (${activeCollections.LAYOUT_COLLECTION}):`, layoutRecord ? 'found' : 'null');
+    debugLog(`[loadUserConfig] configRecord (${activeCollections.CONFIG_COLLECTION}):`, configRecord ? 'found' : 'null');
+    debugLog(`[loadUserConfig] layoutRecord (${activeCollections.LAYOUT_COLLECTION}):`, layoutRecord ? 'found' : 'null');
     if (layoutRecord?.value) {
-      console.log(`[loadUserConfig] layout sections:`, layoutRecord.value.sections);
+      debugLog(`[loadUserConfig] layout sections:`, layoutRecord.value.sections);
     }
 
     // Config record is required for onboarding check.
@@ -547,10 +548,10 @@ export async function loadUserConfig(did) {
         };
         await putRecord(activeCollections.CONFIG_COLLECTION, CONFIG_RKEY, defaultConfigToSave);
         configRecord = { value: defaultConfigToSave }; // Use this new config
-        console.log('[loadUserConfig] Created default garden config record during loading.');
+        debugLog('[loadUserConfig] Created default garden config record during loading.');
       } else {
         // No config and no layout, so truly no garden setup.
-        console.log('[loadUserConfig] No config and no layout found — returning null (will show garden preview)');
+        debugLog('[loadUserConfig] No config and no layout found — returning null (will show garden preview)');
         return null;
       }
     }
@@ -576,7 +577,7 @@ export async function loadUserConfig(did) {
 
     if (layoutRecord && layoutRecord.value && Array.isArray(layoutRecord.value.sections) && layoutRecord.value.sections.length > 0) {
       const pdsSectionUris = layoutRecord.value.sections;
-      console.log(`[loadUserConfig] Fetching ${pdsSectionUris.length} section records from layout...`);
+      debugLog(`[loadUserConfig] Fetching ${pdsSectionUris.length} section records from layout...`);
 
       const pdsSectionResults = await Promise.all(
         pdsSectionUris.map(async (uri, i) => {
@@ -585,12 +586,12 @@ export async function loadUserConfig(did) {
             console.warn(`[loadUserConfig] Failed to parse section URI [${i}]: ${uri}`);
             return null;
           }
-          console.log(`[loadUserConfig]   Fetching section [${i}]: ${parsed.collection}/${parsed.rkey}`);
+          debugLog(`[loadUserConfig]   Fetching section [${i}]: ${parsed.collection}/${parsed.rkey}`);
           const record = await getRecord(parsed.did, parsed.collection, parsed.rkey);
           if (!record) {
             console.warn(`[loadUserConfig]   Section [${i}] returned null (not found): ${uri}`);
           } else {
-            console.log(`[loadUserConfig]   Section [${i}] loaded: type=${record.value?.type}, title=${record.value?.title}, rkey=${record.value?.rkey || '(none)'}`);
+            debugLog(`[loadUserConfig]   Section [${i}] loaded: type=${record.value?.type}, title=${record.value?.title}, rkey=${record.value?.rkey || '(none)'}`);
           }
           return record;
         })
@@ -622,8 +623,8 @@ export async function loadUserConfig(did) {
         return sectionMap.get(sectionRkey);
       }).filter(Boolean);
 
-      console.log(`[loadUserConfig] Final sections after ordering: ${sections.length}`);
-      sections.forEach((s, i) => console.log(`[loadUserConfig]   [${i}] type=${s.type} title=${s.title || '(none)'} rkey=${s.rkey || '(none)'} sectionRkey=${s.sectionRkey}`));
+      debugLog(`[loadUserConfig] Final sections after ordering: ${sections.length}`);
+      sections.forEach((s, i) => debugLog(`[loadUserConfig]   [${i}] type=${s.type} title=${s.title || '(none)'} rkey=${s.rkey || '(none)'} sectionRkey=${s.sectionRkey}`));
     } else {
       // No layout with sections — generate initial defaults for new/empty gardens
       sections = generateInitialSections(did, getWriteNamespace());
@@ -631,7 +632,7 @@ export async function loadUserConfig(did) {
         !layoutRecord.value ? 'layout record has no value' :
         !Array.isArray(layoutRecord.value.sections) ? 'layout sections is not an array' :
         'layout sections array is empty';
-      console.log(`[loadUserConfig] No layout sections (${reason}) — using ${sections.length} initial sections`);
+      debugLog(`[loadUserConfig] No layout sections (${reason}) — using ${sections.length} initial sections`);
     }
 
     currentConfig = {
@@ -645,7 +646,7 @@ export async function loadUserConfig(did) {
       sections,
     };
 
-    console.log(`[loadUserConfig] Config built successfully with ${sections.length} sections`);
+    debugLog(`[loadUserConfig] Config built successfully with ${sections.length} sections`);
     siteOwnerDid = did;
     return currentConfig;
   } catch (error) {

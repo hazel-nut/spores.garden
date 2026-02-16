@@ -2,6 +2,7 @@ import { describeRepo, listRecords, getRecord, getProfile } from '../at-client';
 import { getCurrentDid, logout, getAgent, deleteRecord } from '../oauth';
 import { NEW_NSID_PREFIX, OLD_NSID_PREFIX, SPORE_COLLECTION_KEYS, getCollection } from '../config/nsid';
 import { showConfirmModal } from '../utils/confirm-modal';
+import { debugLog } from '../utils/logger';
 
 /**
  * Handles data fetching and manipulation, specifically garden data resets and profile fetching.
@@ -55,7 +56,7 @@ export class SiteData {
                 gardenCollections = (repoInfo.collections || []).filter((col: string) =>
                     col.startsWith(`${OLD_NSID_PREFIX}.`) || col.startsWith(`${NEW_NSID_PREFIX}.`)
                 );
-                console.log(`Found ${gardenCollections.length} spores collections:`, gardenCollections);
+                debugLog(`Found ${gardenCollections.length} spores collections:`, gardenCollections);
             } catch (error) {
                 console.error('Failed to describe repo, using fallback collection list:', error);
                 // Fallback to known collections if describeRepo fails
@@ -68,11 +69,11 @@ export class SiteData {
             // For each collection, list and delete all records
             for (const collection of gardenCollections) {
                 try {
-                    console.log(`Checking collection: ${collection}`);
+                    debugLog(`Checking collection: ${collection}`);
                     const response = await listRecords(currentDid, collection, { limit: 100 }, getAgent());
-                    console.log(`Response for ${collection}:`, response);
+                    debugLog(`Response for ${collection}:`, response);
                     const records = response?.records || [];
-                    console.log(`Found ${records.length} records in ${collection}`);
+                    debugLog(`Found ${records.length} records in ${collection}`);
 
                     for (const record of records) {
                         try {
@@ -80,7 +81,7 @@ export class SiteData {
                             const uriParts = record.uri.split('/');
                             const rkey = uriParts[uriParts.length - 1];
 
-                            console.log(`Deleting ${collection}/${rkey}`);
+                            debugLog(`Deleting ${collection}/${rkey}`);
                             await deleteRecord(collection, rkey);
                             deletedPdsRecords++;
                         } catch (error) {
@@ -90,7 +91,7 @@ export class SiteData {
                     }
                 } catch (error) {
                     // Collection might not exist, which is fine
-                    console.log(`Error checking ${collection}:`, error);
+                    debugLog(`Error checking ${collection}:`, error);
                 }
             }
 

@@ -110,7 +110,15 @@ Custom CSS supported for full control.
 npm test          # Run tests in watch mode
 npm run test:run  # Run tests once
 npm run test:ui   # Run tests with UI
+npm run typecheck # TypeScript type check
+npm run check     # Strict pre-launch gate (typecheck + tests + build)
 ```
+
+## Debug Logging
+
+Verbose runtime logs are disabled by default. Enable them when debugging with either:
+- query param: `?debug=1`
+- local storage: `localStorage.setItem('spores.garden.debug', '1')`
 
 ## Documentation
 
@@ -119,6 +127,8 @@ npm run test:ui   # Run tests with UI
 - [Special Spore Documentation](docs/special-spore.md) - Special spore mechanics and implementation
 - [NSID Migration Plan](docs/nsid-migration.md) - Namespace migration strategy and launch checklist
 - [Leaflet.pub Schema Notes](docs/leaflet-pub-schema-notes.md) - Notes on leaflet.pub integration
+- [Release Checklist](docs/release-checklist.md) - Final pre-launch verification steps
+- [Contributing Guide](CONTRIBUTING.md) - Development workflow and quality gates
 
 ## License
 

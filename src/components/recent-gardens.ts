@@ -11,6 +11,7 @@ import { hasGardenIdentifierInUrl } from '../config';
 import { getCollection, getReadCollections } from '../config/nsid';
 import { generateThemeFromDid } from '../themes/engine';
 import { getJetstreamClient, type GardenDiscoveryEvent } from '../jetstream';
+import { debugLog } from '../utils/logger';
 import './did-visualization';
 
 /**
@@ -199,7 +200,7 @@ class RecentGardens extends HTMLElement {
   private handleJetstreamEvent(event: GardenDiscoveryEvent) {
     if (!this.isMainPage()) return;
 
-    console.log('[RecentGardens] Jetstream event:', event.collection, event.did, event.timestamp);
+    debugLog('[RecentGardens] Jetstream event:', event.collection, event.did, event.timestamp);
 
     const gardenDid = event.did;
     const eventAge = Date.now() - event.timestamp.getTime();
@@ -244,7 +245,7 @@ class RecentGardens extends HTMLElement {
     const events = Array.from(this.pendingEvents.values());
     this.pendingEvents.clear();
 
-    console.log('[RecentGardens] Processing batched events:', events.length);
+    debugLog('[RecentGardens] Processing batched events:', events.length);
 
     if (events.length === 0) return;
 
@@ -441,7 +442,7 @@ class RecentGardens extends HTMLElement {
 
       if (didListFresh) {
         allGardenDids = loadKnownGardens();
-        console.log('[RecentGardens] Using cached DID list:', allGardenDids.length, 'gardens');
+        debugLog('[RecentGardens] Using cached DID list:', allGardenDids.length, 'gardens');
       } else {
         try {
           const [oldRepos, newRepos] = await Promise.all([
@@ -449,7 +450,7 @@ class RecentGardens extends HTMLElement {
             listReposByCollection(getCollection('siteConfig', 'new')).catch(() => []),
           ]);
           allGardenDids = [...new Set([...(oldRepos || []), ...(newRepos || [])])];
-          console.log('[RecentGardens] Discovered gardens from relay:', allGardenDids.length);
+          debugLog('[RecentGardens] Discovered gardens from relay:', allGardenDids.length);
           saveKnownGardens(allGardenDids);
           localStorage.setItem('spores.garden.didListFetchedAt', Date.now().toString());
         } catch (error) {
@@ -475,7 +476,7 @@ class RecentGardens extends HTMLElement {
       // Step 2: Check activity for ALL DIDs and find the most recent
       const limit = parseInt(this.getAttribute('data-limit') || '12', 10);
       const discovered = await this.checkAllGardenActivity(allGardenDids, limit);
-      console.log('[RecentGardens] Top gardens by activity:', discovered.length);
+      debugLog('[RecentGardens] Top gardens by activity:', discovered.length);
 
       // Merge with any gardens already found via Jetstream (don't overwrite newer)
       for (const garden of discovered) {
@@ -496,7 +497,7 @@ class RecentGardens extends HTMLElement {
       // Enrich with profile data
       await this.enrichGardens();
 
-      console.log('[RecentGardens] Total gardens after merge:', this.gardens.length);
+      debugLog('[RecentGardens] Total gardens after merge:', this.gardens.length);
       this.lastLoadTime = Date.now();
     } catch (error) {
       console.error('Failed to load recent gardens:', error);
@@ -529,7 +530,7 @@ class RecentGardens extends HTMLElement {
         }
       }
 
-      console.log('[RecentGardens] Activity cache: %d fresh, %d stale/new', results.length, staleDids.length);
+      debugLog('[RecentGardens] Activity cache: %d fresh, %d stale/new', results.length, staleDids.length);
 
       // Fetch activity for stale/new DIDs in batches of 20
       const BATCH_SIZE = 20;
@@ -608,7 +609,7 @@ class RecentGardens extends HTMLElement {
         return b.lastUpdated.getTime() - a.lastUpdated.getTime();
       });
 
-      console.log('[RecentGardens] Checked activity for', results.length, 'gardens');
+      debugLog('[RecentGardens] Checked activity for', results.length, 'gardens');
       return results.slice(0, limit);
     } catch (error) {
       console.warn('Error checking garden activity:', error);
