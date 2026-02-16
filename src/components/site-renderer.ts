@@ -693,11 +693,17 @@ export class SiteRenderer {
     }
 
     getLoadingMessage(): string {
-        if (SiteRouter.isViewingProfile()) {
-            const messages = ['loading spores', 'loading garden'];
-            return messages[Math.floor(Math.random() * messages.length)];
+        if (!SiteRouter.isViewingProfile()) {
+            return 'Loading home...';
         }
-        return 'Loading your garden...';
+
+        const ownerDid = getSiteOwnerDid();
+        const currentDid = getCurrentDid();
+        if (ownerDid && currentDid && ownerDid === currentDid) {
+            return 'Loading your garden...';
+        }
+
+        return 'Loading garden...';
     }
 
     private updateFavicon(did: string | null): void {
