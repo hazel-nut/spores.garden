@@ -18,10 +18,12 @@ import {
   getReadNamespaces,
   getWriteNamespace,
   isNsidMigrationEnabled,
-  mapCollectionToNamespace,
-  rewriteAtUriNamespace,
-  rewriteAtUrisNamespace,
 } from './config/nsid';
+import {
+  buildSectionRecordForSave,
+  normalizeSectionForNamespace,
+  rewriteRecordPayloadForNamespace,
+} from './config/section-persistence';
 
 const CONFIG_RKEY = 'self';
 
@@ -45,66 +47,6 @@ function getCollections(namespace = getWriteNamespace()) {
     PROFILE_COLLECTION: getCollection('siteProfile', namespace),
     CONTENT_TEXT_COLLECTION: getCollection('contentText', namespace),
   };
-}
-
-function getSectionReference(section: any): { collection?: string; rkey?: string } {
-  const parsed = section?.ref ? parseAtUri(section.ref) : null;
-  return {
-    collection: parsed?.collection || section?.collection,
-    rkey: parsed?.rkey || section?.rkey,
-  };
-}
-
-function normalizeSectionForNamespace(section: any, namespace = getWriteNamespace()): any {
-  if (!section) return section;
-  const normalized = { ...section };
-
-  if (normalized.ref) {
-    normalized.ref = rewriteAtUriNamespace(normalized.ref, namespace);
-  }
-  if (Array.isArray(normalized.records)) {
-    normalized.records = rewriteAtUrisNamespace(normalized.records, namespace);
-  }
-  if (normalized.collection) {
-    normalized.collection = mapCollectionToNamespace(normalized.collection, namespace);
-  }
-
-  const sectionRef = getSectionReference(normalized);
-  if (sectionRef.collection && sectionRef.rkey && !normalized.ref) {
-    const did = getCurrentDid() || siteOwnerDid;
-    if (did) {
-      normalized.ref = buildAtUri(did, sectionRef.collection, sectionRef.rkey);
-    }
-  }
-
-  return normalized;
-}
-
-function rewriteRecordPayloadForNamespace(collection: string, value: any, namespace = getWriteNamespace()): any {
-  if (!value || typeof value !== 'object') return value;
-  const rewritten = { ...value };
-
-  if (rewritten.$type && typeof rewritten.$type === 'string') {
-    rewritten.$type = mapCollectionToNamespace(rewritten.$type, namespace);
-  }
-
-  if (collection.endsWith('.site.layout') && Array.isArray(rewritten.sections)) {
-    rewritten.sections = rewriteAtUrisNamespace(rewritten.sections, namespace);
-  }
-
-  if (collection.endsWith('.site.section')) {
-    if (rewritten.ref) rewritten.ref = rewriteAtUriNamespace(rewritten.ref, namespace);
-    if (Array.isArray(rewritten.records)) rewritten.records = rewriteAtUrisNamespace(rewritten.records, namespace);
-    if (rewritten.collection) rewritten.collection = mapCollectionToNamespace(rewritten.collection, namespace);
-    if (rewritten.data && typeof rewritten.data === 'object') {
-      rewritten.data = { ...rewritten.data };
-      if (rewritten.data.ref) rewritten.data.ref = rewriteAtUriNamespace(rewritten.data.ref, namespace);
-      if (Array.isArray(rewritten.data.records)) rewritten.data.records = rewriteAtUrisNamespace(rewritten.data.records, namespace);
-      if (rewritten.data.collection) rewritten.data.collection = mapCollectionToNamespace(rewritten.data.collection, namespace);
-    }
-  }
-
-  return rewritten;
 }
 
 export type { UrlIdentifier };
@@ -497,7 +439,7 @@ export async function loadUserConfig(did) {
       // rkey = the target record's rkey within the collection (from the record value, e.g. 'self' for profiles)
       sections = pdsSectionResults.filter(Boolean).map(record => {
         const sectionRkey = record.uri?.split('/').pop();
-        const val = normalizeSectionForNamespace(record.value, getWriteNamespace());
+        const val = normalizeSectionForNamespace(record.value, getWriteNamespace(), did);
         // Construct ref from collection+rkey when absent (backward compat)
         let ref = val.ref;
         if (!ref && val.collection && val.rkey) {
@@ -628,21 +570,8 @@ export async function saveConfig({ isInitialOnboarding = false } = {}) {
   promises.push(putRecord(collections.CONFIG_COLLECTION, CONFIG_RKEY, configToSave));
 
   const updatedSections = await Promise.all(currentConfig.sections.map(async (rawSection) => {
-    const section = normalizeSectionForNamespace(rawSection, writeNamespace);
-    const sectionRecord = {
-      $type: collections.SECTION_COLLECTION,
-      type: section.type,
-      title: section.title || undefined,
-      layout: section.layout || undefined,
-      ref: section.ref || undefined,
-      collection: section.collection || undefined,
-      rkey: section.rkey || undefined,
-      records: section.records || undefined,
-      content: section.content || undefined,
-      format: section.format || undefined,
-      limit: section.limit || undefined,
-      hideHeader: section.hideHeader || undefined,
-    };
+    const section = normalizeSectionForNamespace(rawSection, writeNamespace, did);
+    const sectionRecord = buildSectionRecordForSave(section, collections.SECTION_COLLECTION);
 
     if (section.sectionRkey) {
       await putRecord(collections.SECTION_COLLECTION, section.sectionRkey, sectionRecord);
