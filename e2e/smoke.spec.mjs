@@ -124,3 +124,27 @@ test('notification can be dismissed', async ({ page }) => {
   await page.locator('.notification-close').click();
   await expect(notification).toHaveCount(0);
 });
+
+test('login modal opens and closes from home page', async ({ page }) => {
+  await page.goto('/');
+
+  await page.getByRole('button', { name: /login/i }).first().click();
+  const modalHeading = page.getByRole('heading', { name: 'Login with Bluesky or ATProto' });
+  await expect(modalHeading).toBeVisible();
+
+  await page.getByRole('button', { name: 'Cancel' }).click();
+  await expect(modalHeading).toHaveCount(0);
+});
+
+test('auth-change expired event shows session-expired notification', async ({ page }) => {
+  await page.goto('/');
+
+  await page.evaluate(() => {
+    window.dispatchEvent(new CustomEvent('auth-change', {
+      detail: { reason: 'expired', loggedIn: false, did: null },
+    }));
+  });
+
+  await expect(page.locator('.notification.notification-error .notification-message'))
+    .toContainText('Session expired, please log in again.');
+});

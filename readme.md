@@ -129,6 +129,7 @@ Verbose runtime logs are disabled by default. Enable them when debugging with ei
 - [NSID Migration Plan](docs/nsid-migration.md) - Namespace migration strategy and launch checklist
 - [Leaflet.pub Schema Notes](docs/leaflet-pub-schema-notes.md) - Notes on leaflet.pub integration
 - [Release Checklist](docs/release-checklist.md) - Final pre-launch verification steps
+- [Rollback Playbook](docs/rollback-playbook.md) - Incident response and rollback levers
 - [Contributing Guide](CONTRIBUTING.md) - Development workflow and quality gates
 
 ## License
