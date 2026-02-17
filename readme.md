@@ -30,17 +30,22 @@ You can also directly view gardens by URL:
 
 ## Lexicons
 
-**Required Records:**
-- `garden.spores.site.config` - Site configuration (title, subtitle)
+Writes use the `coop.hypha.spores.*` namespace; reads fall back to `garden.spores.*` for legacy data.
+
+**Site Configuration:**
+- `coop.hypha.spores.site.config` - Site configuration (title, subtitle)
+- `coop.hypha.spores.site.layout` - Layout preferences
+- `coop.hypha.spores.site.section` - Individual section definitions
+- `coop.hypha.spores.site.profile` - Profile / about-me record
 
 **User Content:**
-- `garden.spores.content.text` - Text content records
-- `garden.spores.content.image` - Image content records
+- `coop.hypha.spores.content.text` - Text content records
+- `coop.hypha.spores.content.image` - Image content records
 
 **Social/Interactive:**
-- `garden.spores.social.flower` - Flowers planted in gardens
-- `garden.spores.social.takenFlower` - Flowers collected from other gardens
-- `garden.spores.item.specialSpore` - Special spore items (capture-the-flag mechanic)
+- `coop.hypha.spores.social.flower` - Flowers planted in gardens
+- `coop.hypha.spores.social.takenFlower` - Flowers collected from other gardens
+- `coop.hypha.spores.item.specialSpore` - Special spore items (capture-the-flag mechanic)
 
 **Generative (Client-Side Only):**
 - Themes and sections are generated deterministically from your DID on every load—never stored on PDS

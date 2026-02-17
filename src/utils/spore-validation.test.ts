@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { TEST_SPORE_DIDS, seededRandom, shouldReceiveInitialSpore, isValidSpore } from './spore-validation';
+import { SEED_SPORE_DIDS, seededRandom, shouldReceiveInitialSpore, isValidSpore } from './spore-validation';
 
 describe('spore validation', () => {
   it('always grants spores for explicit test DIDs', () => {
-    for (const did of TEST_SPORE_DIDS) {
+    for (const did of SEED_SPORE_DIDS) {
       expect(shouldReceiveInitialSpore(did)).toBe(true);
       expect(isValidSpore(did)).toBe(true);
     }

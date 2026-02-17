@@ -1,4 +1,4 @@
-export const TEST_SPORE_DIDS = [
+export const SEED_SPORE_DIDS = [
   'did:plc:y3lae7hmqiwyq7w2v3bcb2c2', // v's test DID
 ];
 
@@ -18,7 +18,7 @@ export function seededRandom(seed: string): () => number {
 
 export function shouldReceiveInitialSpore(did: string): boolean {
   if (!did) return false;
-  if (TEST_SPORE_DIDS.includes(did)) return true;
+  if (SEED_SPORE_DIDS.includes(did)) return true;
   const rng = seededRandom(did);
   return rng() < 0.1;
 }

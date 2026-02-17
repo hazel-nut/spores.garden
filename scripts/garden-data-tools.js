@@ -15,7 +15,6 @@ const COLLECTIONS = [
   'garden.spores.site.config',
   'garden.spores.site.layout',
   'garden.spores.site.section',
-  'garden.spores.site.sections',
   'garden.spores.site.profile',
   'garden.spores.content.text',
   'garden.spores.content.image',

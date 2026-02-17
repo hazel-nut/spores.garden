@@ -50,7 +50,8 @@ let oauthConfig: OAuthConfig | null = null;
 let currentAgent: OAuthUserAgent | null = null;
 let currentSession: Session | null = null;
 let identityResolver: ReturnType<typeof defaultIdentityResolver> | null = null;
-const DP0P_NONCE_ERROR = 'use_dpop_nonce';
+const DPOP_NONCE_ERROR = 'use_dpop_nonce';
+const DPOP_RETRY_DELAY_MS = 100;
 
 /**
  * Initialize OAuth configuration
@@ -373,15 +374,15 @@ export async function createRecord(collection: string, record: unknown) {
 
   try {
     let response = await runCreateRecord();
-    if (!response.ok && response.data?.error === DP0P_NONCE_ERROR) {
-      await new Promise(r => setTimeout(r, 100));
+    if (!response.ok && response.data?.error === DPOP_NONCE_ERROR) {
+      await new Promise(r => setTimeout(r, DPOP_RETRY_DELAY_MS));
       response = await runCreateRecord();
     }
 
     if (!response.ok) {
       const status = (response as { status?: number }).status;
       const errorMsg = response.data?.message || response.data?.error || 'Unknown error';
-      if ((status === 401 || status === 403) && response.data?.error !== DP0P_NONCE_ERROR) {
+      if ((status === 401 || status === 403) && response.data?.error !== DPOP_NONCE_ERROR) {
         clearSessionDueToAuthFailure();
         throw new Error('Session expired, please log in again.');
       }
@@ -435,14 +436,14 @@ export async function putRecord(collection: string, rkey: string, record: unknow
     }
   });
   let response = await runPutRecord();
-  if (!response.ok && response.data?.error === DP0P_NONCE_ERROR) {
-    await new Promise(r => setTimeout(r, 100));
+  if (!response.ok && response.data?.error === DPOP_NONCE_ERROR) {
+    await new Promise(r => setTimeout(r, DPOP_RETRY_DELAY_MS));
     response = await runPutRecord();
   }
 
   if (!response.ok) {
     const status = (response as { status?: number }).status;
-    if ((status === 401 || status === 403) && response.data?.error !== DP0P_NONCE_ERROR) {
+    if ((status === 401 || status === 403) && response.data?.error !== DPOP_NONCE_ERROR) {
       clearSessionDueToAuthFailure();
       throw new Error('Session expired, please log in again.');
     }
@@ -493,13 +494,13 @@ export async function deleteRecord(collection: string, rkey: string) {
     }
   });
   let response = await runDeleteRecord();
-  if (!response.ok && response.data?.error === DP0P_NONCE_ERROR) {
-    await new Promise(r => setTimeout(r, 100));
+  if (!response.ok && response.data?.error === DPOP_NONCE_ERROR) {
+    await new Promise(r => setTimeout(r, DPOP_RETRY_DELAY_MS));
     response = await runDeleteRecord();
   }
 
   if (!response.ok) {
-    if ((response.status === 401 || response.status === 403) && response.data?.error !== DP0P_NONCE_ERROR) {
+    if ((response.status === 401 || response.status === 403) && response.data?.error !== DPOP_NONCE_ERROR) {
       clearSessionDueToAuthFailure();
       throw new Error('Session expired, please log in again.');
     }
