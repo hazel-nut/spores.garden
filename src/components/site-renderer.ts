@@ -176,6 +176,7 @@ export class SiteRenderer {
                     // but `render` is awaited by caller anyway.
 
                     findAllHeldSpores(ownerDid).then(spores => {
+                        if (this.renderId !== myRenderId) return;
                         if (spores.length > 0) {
                             const sporesWrap = document.createElement('div');
                             sporesWrap.className = 'header-spores';

@@ -53,6 +53,22 @@ function getRecordRkey(record: any): string | null {
   return parts.length > 0 ? parts[parts.length - 1] : null;
 }
 
+function toComparableValue(value: any): any {
+  if (!value || typeof value !== 'object') return value;
+  if (Array.isArray(value)) return value.map(toComparableValue);
+
+  const out: Record<string, any> = {};
+  for (const [key, val] of Object.entries(value)) {
+    if (key === '$type') continue;
+    out[key] = toComparableValue(val);
+  }
+  return out;
+}
+
+function recordsSemanticallyEqual(a: any, b: any): boolean {
+  return JSON.stringify(toComparableValue(a)) === JSON.stringify(toComparableValue(b));
+}
+
 export async function migrateOwnerNsidRecordsImpl(
   did: string,
   deps: {
@@ -85,18 +101,23 @@ export async function migrateOwnerNsidRecordsImpl(
       if (key === 'siteConfig' || key === 'siteLayout' || key === 'siteProfile') {
         const oldRecord = await deps.getRecord(did, oldCollection, deps.CONFIG_RKEY);
         if (!oldRecord?.value) continue;
+        const rewritten = deps.rewriteRecordPayloadForNamespace(oldCollection, oldRecord.value, 'new');
 
         const existingNewRecord = await deps.getRecord(did, newCollection, deps.CONFIG_RKEY);
         if (!existingNewRecord?.value) {
-          const rewritten = deps.rewriteRecordPayloadForNamespace(oldCollection, oldRecord.value, 'new');
           await deps.putRecord(newCollection, deps.CONFIG_RKEY, {
             ...rewritten,
             $type: newCollection,
           });
           writes += 1;
+          await deps.deleteRecord(oldCollection, deps.CONFIG_RKEY);
+          deletes += 1;
+        } else if (recordsSemanticallyEqual(rewritten, existingNewRecord.value)) {
+          await deps.deleteRecord(oldCollection, deps.CONFIG_RKEY);
+          deletes += 1;
+        } else {
+          deps.debugLog(`[nsid-migration] Kept old singleton ${oldCollection}/self for ${did}: existing new payload differs.`);
         }
-        await deps.deleteRecord(oldCollection, deps.CONFIG_RKEY);
-        deletes += 1;
         continue;
       }
 
@@ -105,22 +126,35 @@ export async function migrateOwnerNsidRecordsImpl(
         continue;
       }
       const newRecords = await listAllRecordsForCollection(did, newCollection, deps.listRecords);
-      const newRkeys = new Set(newRecords.map((record) => getRecordRkey(record)).filter(Boolean));
+      const newByRkey = new Map<string, any>();
+      for (const record of newRecords) {
+        const rkey = getRecordRkey(record);
+        if (!rkey || !record?.value) continue;
+        newByRkey.set(rkey, record.value);
+      }
 
       for (const record of oldRecords) {
         const rkey = getRecordRkey(record);
         if (!rkey || !record?.value) continue;
-        if (!newRkeys.has(rkey)) {
-          const rewritten = deps.rewriteRecordPayloadForNamespace(oldCollection, record.value, 'new');
+        const rewritten = deps.rewriteRecordPayloadForNamespace(oldCollection, record.value, 'new');
+        const existingNewValue = newByRkey.get(rkey);
+        if (!existingNewValue) {
           await deps.putRecord(newCollection, rkey, {
             ...rewritten,
             $type: newCollection,
           });
           writes += 1;
-          newRkeys.add(rkey);
+          newByRkey.set(rkey, { ...rewritten, $type: newCollection });
+          await deps.deleteRecord(oldCollection, rkey);
+          deletes += 1;
+          continue;
         }
-        await deps.deleteRecord(oldCollection, rkey);
-        deletes += 1;
+        if (recordsSemanticallyEqual(rewritten, existingNewValue)) {
+          await deps.deleteRecord(oldCollection, rkey);
+          deletes += 1;
+        } else {
+          deps.debugLog(`[nsid-migration] Kept old record ${oldCollection}/${rkey} for ${did}: existing new payload differs.`);
+        }
       }
     }
 

@@ -121,10 +121,11 @@ Verbose runtime logs are disabled by default. Enable them when debugging with ei
 - query param: `?debug=1`
 - local storage: `localStorage.setItem('spores.garden.debug', '1')`
 
-## Deployment Flags
+## Deployment Notes
 
-- `VITE_NSID_MIGRATION_ENABLED=true` enables new-namespace writes plus owner migration.
-- Leave unset (or set to `false`) to keep old-namespace-only behavior.
+- Namespace behavior is now new-first by default:
+  - writes use `coop.hypha.spores.*`
+  - reads use `coop.hypha.spores.*` with fallback to `garden.spores.*`
 - Copy `.env.example` to `.env.local` for local development overrides.
 
 ## Developer Utilities

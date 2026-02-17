@@ -181,6 +181,58 @@ describe('migrateOwnerNsidRecordsImpl', () => {
     expect(deps.deleteRecord).toHaveBeenCalledWith(OLD.SECTION_COLLECTION, 'same-rkey');
   });
 
+  it('keeps old singleton record when existing new singleton payload differs', async () => {
+    const deps = makeDeps({
+      getRecord: vi.fn(async (_did: string, collection: string) => {
+        if (collection === OLD.CONFIG_COLLECTION) {
+          return { value: { title: 'Old Title', subtitle: 'Keep me' } };
+        }
+        if (collection === NEW.CONFIG_COLLECTION) {
+          return { value: { $type: NEW.CONFIG_COLLECTION, title: 'New Title', subtitle: 'Different' } };
+        }
+        return null;
+      }),
+    });
+
+    await migrateOwnerNsidRecordsImpl(DID, deps);
+
+    expect(deps.putRecord).not.toHaveBeenCalled();
+    expect(deps.deleteRecord).not.toHaveBeenCalledWith(OLD.CONFIG_COLLECTION, 'self');
+  });
+
+  it('keeps old list record when existing new record payload differs', async () => {
+    const deps = makeDeps({
+      listRecords: vi.fn(async (_did: string, collection: string) => {
+        if (collection === OLD.SECTION_COLLECTION) {
+          return {
+            records: [
+              {
+                uri: `at://${DID}/${OLD.SECTION_COLLECTION}/same-rkey`,
+                value: { $type: OLD.SECTION_COLLECTION, type: 'content', title: 'Old payload' },
+              },
+            ],
+          };
+        }
+        if (collection === NEW.SECTION_COLLECTION) {
+          return {
+            records: [
+              {
+                uri: `at://${DID}/${NEW.SECTION_COLLECTION}/same-rkey`,
+                value: { $type: NEW.SECTION_COLLECTION, type: 'content', title: 'Different payload' },
+              },
+            ],
+          };
+        }
+        return { records: [] };
+      }),
+    });
+
+    await migrateOwnerNsidRecordsImpl(DID, deps);
+
+    expect(deps.putRecord).not.toHaveBeenCalled();
+    expect(deps.deleteRecord).not.toHaveBeenCalledWith(OLD.SECTION_COLLECTION, 'same-rkey');
+  });
+
   it('stops paginating when cursor repeats to avoid infinite loops', async () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const deps = makeDeps({
