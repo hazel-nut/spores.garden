@@ -46,42 +46,37 @@ async function listAllRecordsForCollection(
   return all;
 }
 
+function getRecordRkey(record: any): string | null {
+  const uri = record?.uri;
+  if (typeof uri !== 'string') return null;
+  const parts = uri.split('/');
+  return parts.length > 0 ? parts[parts.length - 1] : null;
+}
+
 export async function migrateOwnerNsidRecordsImpl(
   did: string,
   deps: {
-    isNsidMigrationEnabled: () => boolean;
     isLoggedIn: () => boolean;
     getCurrentDid: () => string | null;
-    getCollections: (namespace: 'old' | 'new') => CollectionSet;
     getCollection: (key: string, namespace?: 'old' | 'new') => string;
     SPORE_COLLECTION_KEYS: string[];
     getRecord: (did: string, collection: string, rkey: string) => Promise<any>;
     putRecord: (collection: string, rkey: string, value: any) => Promise<any>;
+    deleteRecord: (collection: string, rkey: string) => Promise<any>;
     listRecords: ListRecordsFn;
     rewriteRecordPayloadForNamespace: (collection: string, value: any, namespace: 'old' | 'new') => any;
     CONFIG_RKEY: string;
-    NSID_MIGRATION_VERSION: number;
     debugLog: (...args: unknown[]) => void;
   }
 ): Promise<void> {
-  if (!deps.isNsidMigrationEnabled()) {
-    deps.debugLog(`[nsid-migration] Skipping migration for ${did}: rollout flag disabled.`);
-    return;
-  }
   if (!deps.isLoggedIn() || deps.getCurrentDid() !== did) {
     deps.debugLog(`[nsid-migration] Skipping migration for ${did}: not logged in as owner.`);
     return;
   }
 
-  const newCollections = deps.getCollections('new');
-  const oldCollections = deps.getCollections('old');
-
   try {
-    const existingNewConfig = await deps.getRecord(did, newCollections.CONFIG_COLLECTION, deps.CONFIG_RKEY);
-    if (existingNewConfig?.value?.nsidMigrationVersion >= deps.NSID_MIGRATION_VERSION) {
-      deps.debugLog(`[nsid-migration] Skipping migration for ${did}: marker already set.`);
-      return;
-    }
+    let writes = 0;
+    let deletes = 0;
 
     for (const key of deps.SPORE_COLLECTION_KEYS) {
       const oldCollection = deps.getCollection(key, 'old');
@@ -90,39 +85,50 @@ export async function migrateOwnerNsidRecordsImpl(
       if (key === 'siteConfig' || key === 'siteLayout' || key === 'siteProfile') {
         const oldRecord = await deps.getRecord(did, oldCollection, deps.CONFIG_RKEY);
         if (!oldRecord?.value) continue;
-        const rewritten = deps.rewriteRecordPayloadForNamespace(oldCollection, oldRecord.value, 'new');
-        await deps.putRecord(newCollection, deps.CONFIG_RKEY, {
-          ...rewritten,
-          $type: newCollection,
-        });
+
+        const existingNewRecord = await deps.getRecord(did, newCollection, deps.CONFIG_RKEY);
+        if (!existingNewRecord?.value) {
+          const rewritten = deps.rewriteRecordPayloadForNamespace(oldCollection, oldRecord.value, 'new');
+          await deps.putRecord(newCollection, deps.CONFIG_RKEY, {
+            ...rewritten,
+            $type: newCollection,
+          });
+          writes += 1;
+        }
+        await deps.deleteRecord(oldCollection, deps.CONFIG_RKEY);
+        deletes += 1;
         continue;
       }
 
       const oldRecords = await listAllRecordsForCollection(did, oldCollection, deps.listRecords);
+      if (oldRecords.length === 0) {
+        continue;
+      }
+      const newRecords = await listAllRecordsForCollection(did, newCollection, deps.listRecords);
+      const newRkeys = new Set(newRecords.map((record) => getRecordRkey(record)).filter(Boolean));
+
       for (const record of oldRecords) {
-        const rkey = record?.uri?.split('/').pop();
+        const rkey = getRecordRkey(record);
         if (!rkey || !record?.value) continue;
-        const rewritten = deps.rewriteRecordPayloadForNamespace(oldCollection, record.value, 'new');
-        await deps.putRecord(newCollection, rkey, {
-          ...rewritten,
-          $type: newCollection,
-        });
+        if (!newRkeys.has(rkey)) {
+          const rewritten = deps.rewriteRecordPayloadForNamespace(oldCollection, record.value, 'new');
+          await deps.putRecord(newCollection, rkey, {
+            ...rewritten,
+            $type: newCollection,
+          });
+          writes += 1;
+          newRkeys.add(rkey);
+        }
+        await deps.deleteRecord(oldCollection, rkey);
+        deletes += 1;
       }
     }
 
-    const latestNewConfig = await deps.getRecord(did, newCollections.CONFIG_COLLECTION, deps.CONFIG_RKEY);
-    const oldConfig = await deps.getRecord(did, oldCollections.CONFIG_COLLECTION, deps.CONFIG_RKEY);
-    const baseConfig = latestNewConfig?.value || oldConfig?.value || {
-      title: 'My Garden',
-      subtitle: '',
-    };
-
-    await deps.putRecord(newCollections.CONFIG_COLLECTION, deps.CONFIG_RKEY, {
-      ...baseConfig,
-      $type: newCollections.CONFIG_COLLECTION,
-      nsidMigrationVersion: deps.NSID_MIGRATION_VERSION,
-    });
-    deps.debugLog(`[nsid-migration] Completed migration for ${did}`);
+    if (writes === 0 && deletes === 0) {
+      deps.debugLog(`[nsid-migration] No migration needed for ${did}: no old records to migrate.`);
+      return;
+    }
+    deps.debugLog(`[nsid-migration] Completed migration for ${did}: wrote ${writes}, deleted ${deletes}.`);
   } catch (error) {
     console.error(`[nsid-migration] Failed migration for ${did}:`, error);
   }

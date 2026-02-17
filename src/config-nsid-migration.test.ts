@@ -11,9 +11,9 @@ vi.mock('./at-client', () => ({
 vi.mock('./oauth', () => ({
   createRecord: vi.fn(),
   putRecord: vi.fn(),
+  deleteRecord: vi.fn(),
   getCurrentDid: vi.fn(),
   isLoggedIn: vi.fn(),
-  deleteRecord: vi.fn(),
 }));
 
 vi.mock('./themes/engine', () => ({
@@ -30,9 +30,9 @@ vi.mock('./components/recent-gardens', () => ({
 }));
 
 import { getRecord, listRecords } from './at-client';
-import { putRecord, getCurrentDid, isLoggedIn } from './oauth';
+import { putRecord, deleteRecord, getCurrentDid, isLoggedIn } from './oauth';
 import { migrateOwnerNsidRecords } from './config';
-import { getCollection, NSID_MIGRATION_VERSION, setNsidMigrationEnabledForTests } from './config/nsid';
+import { getCollection } from './config/nsid';
 
 type StoredRecord = {
   value: any;
@@ -51,7 +51,6 @@ describe('NSID owner migration', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     store.clear();
-    setNsidMigrationEnabledForTests(true);
 
     vi.mocked(isLoggedIn).mockReturnValue(true);
     vi.mocked(getCurrentDid).mockReturnValue(DID);
@@ -75,17 +74,21 @@ describe('NSID owner migration', () => {
       });
       return { uri: `at://${DID}/${collection}/${rkey}` } as any;
     });
+
+    vi.mocked(deleteRecord).mockImplementation(async (collection: string, rkey: string) => {
+      store.delete(key(DID, collection, rkey));
+      return {} as any;
+    });
   });
 
-  it('creates migration marker for owner when no prior records exist', async () => {
+  it('does not create records when there is nothing to migrate', async () => {
     await migrateOwnerNsidRecords(DID);
 
     const newConfigCollection = getCollection('siteConfig', 'new');
     const migratedConfig = store.get(key(DID, newConfigCollection, 'self'));
 
-    expect(migratedConfig).toBeTruthy();
-    expect(migratedConfig?.value?.$type).toBe(newConfigCollection);
-    expect(migratedConfig?.value?.nsidMigrationVersion).toBe(NSID_MIGRATION_VERSION);
+    expect(migratedConfig).toBeUndefined();
+    expect(vi.mocked(putRecord)).not.toHaveBeenCalled();
   });
 
   it('migrates old records to new namespace and is idempotent', async () => {

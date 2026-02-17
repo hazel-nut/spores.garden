@@ -66,12 +66,9 @@ Use this checklist for release-candidate validation in real browsers before laun
 
 ## 8) NSID Rollout Validation
 
-Pre-rollout:
-- [ ] With `VITE_NSID_MIGRATION_ENABLED=false`, app behavior remains stable.
-
 Rollout/staging:
-- [ ] With `VITE_NSID_MIGRATION_ENABLED=true`, owner migration runs for owner session.
-- [ ] Migration marker is set and repeat load is idempotent.
+- [ ] Owner migration runs automatically for logged-in owner session.
+- [ ] Repeat load is idempotent (no duplicate migrated records, no extra writes).
 - [ ] Post-migration garden still renders and saves correctly.
 
 ## 9) Non-Functional Checks

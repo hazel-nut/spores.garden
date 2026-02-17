@@ -22,6 +22,76 @@ class CreateImage extends HTMLElement {
     private existingCreatedAt: string | null = null;
     private imageCleared: boolean = false;
 
+    private async getImageDimensions(file: File): Promise<{ width: number; height: number } | null> {
+        return new Promise((resolve) => {
+            const img = new Image();
+            const url = URL.createObjectURL(file);
+            img.onload = () => {
+                const width = img.naturalWidth;
+                const height = img.naturalHeight;
+                URL.revokeObjectURL(url);
+                resolve(width > 0 && height > 0 ? { width, height } : null);
+            };
+            img.onerror = () => {
+                URL.revokeObjectURL(url);
+                resolve(null);
+            };
+            img.src = url;
+        });
+    }
+
+    private isHeicMime(mimeType: string): boolean {
+        const mime = (mimeType || '').toLowerCase();
+        return mime === 'image/heic' || mime === 'image/heif';
+    }
+
+    private async normalizeUploadFile(file: File): Promise<{ file: File; width?: number; height?: number }> {
+        const originalDims = await this.getImageDimensions(file);
+
+        if (!this.isHeicMime(file.type)) {
+            if (!originalDims) return { file };
+            return { file, width: originalDims.width, height: originalDims.height };
+        }
+
+        if (!originalDims) {
+            throw new Error('HEIC/HEIF image could not be decoded by this browser. Please convert it to JPEG or WebP and try again.');
+        }
+
+        const sourceUrl = URL.createObjectURL(file);
+        const img = new Image();
+        await new Promise<void>((resolve, reject) => {
+            img.onload = () => resolve();
+            img.onerror = () => reject(new Error('Failed to decode HEIC/HEIF image.'));
+            img.src = sourceUrl;
+        });
+
+        const canvas = document.createElement('canvas');
+        canvas.width = img.naturalWidth || originalDims.width;
+        canvas.height = img.naturalHeight || originalDims.height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+            URL.revokeObjectURL(sourceUrl);
+            throw new Error('Image conversion is not supported in this browser.');
+        }
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        URL.revokeObjectURL(sourceUrl);
+
+        const convertedBlob = await new Promise<Blob | null>((resolve) => {
+            canvas.toBlob((blob) => resolve(blob), 'image/webp', 0.92);
+        });
+        if (!convertedBlob) {
+            throw new Error('Failed to convert HEIC/HEIF image to WebP.');
+        }
+
+        const webpName = file.name.replace(/\.[^.]+$/, '') + '.webp';
+        const convertedFile = new File([convertedBlob], webpName, {
+            type: 'image/webp',
+            lastModified: Date.now(),
+        });
+
+        return { file: convertedFile, width: canvas.width, height: canvas.height };
+    }
+
     connectedCallback() {
         this.render();
     }
@@ -278,8 +348,9 @@ class CreateImage extends HTMLElement {
             throw new Error('Not logged in');
         }
 
-        // 1. Upload Blob
-        const uploadResult = await uploadBlob(this.selectedFile, this.selectedFile.type);
+        // 1. Normalize image (HEIC/HEIF -> WebP), then upload blob
+        const normalized = await this.normalizeUploadFile(this.selectedFile);
+        const uploadResult = await uploadBlob(normalized.file, normalized.file.type);
 
         // Handle different response structures from atcute/api vs our wrapper
         const blobRef = uploadResult.data?.blob;
@@ -292,7 +363,24 @@ class CreateImage extends HTMLElement {
         const record: any = {
             $type: imageCollection,
             image: blobRef,
-            createdAt: new Date().toISOString()
+            createdAt: new Date().toISOString(),
+            embed: {
+                $type: 'app.bsky.embed.images',
+                images: [
+                    {
+                        alt: this.imageTitle || 'Garden image',
+                        image: blobRef,
+                        ...(normalized.width && normalized.height
+                            ? {
+                                aspectRatio: {
+                                    width: normalized.width,
+                                    height: normalized.height,
+                                },
+                            }
+                            : {}),
+                    },
+                ],
+            },
         };
 
         if (this.imageTitle) {
@@ -339,8 +427,13 @@ class CreateImage extends HTMLElement {
 
         const imageCollection = getCollection('contentImage');
         let blobRef = null;
+        let aspectRatio: { width: number; height: number } | null = null;
         if (this.selectedFile) {
-            const uploadResult = await uploadBlob(this.selectedFile, this.selectedFile.type);
+            const normalized = await this.normalizeUploadFile(this.selectedFile);
+            if (normalized.width && normalized.height) {
+                aspectRatio = { width: normalized.width, height: normalized.height };
+            }
+            const uploadResult = await uploadBlob(normalized.file, normalized.file.type);
             blobRef = uploadResult.data?.blob;
         } else if (!this.imageCleared && this.existingImageBlob) {
             blobRef = this.existingImageBlob;
@@ -353,7 +446,17 @@ class CreateImage extends HTMLElement {
         const record: any = {
             $type: imageCollection,
             image: blobRef,
-            createdAt: this.existingCreatedAt || new Date().toISOString()
+            createdAt: this.existingCreatedAt || new Date().toISOString(),
+            embed: {
+                $type: 'app.bsky.embed.images',
+                images: [
+                    {
+                        alt: this.imageTitle || 'Garden image',
+                        image: blobRef,
+                        ...(aspectRatio ? { aspectRatio } : {}),
+                    },
+                ],
+            },
         };
 
         if (this.imageTitle) {

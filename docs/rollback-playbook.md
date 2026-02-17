@@ -17,15 +17,14 @@ This playbook defines quick-response actions for launch and post-launch incident
 
 ## Rollback Levers
 
-### 1) NSID rollout control (highest leverage)
+### 1) NSID rollback (highest leverage)
 
 File: `src/config/nsid.ts`
 
-- Emergency disable migration/write-new behavior:
-  - set deployment env `VITE_NSID_MIGRATION_ENABLED=false` and redeploy
+- Emergency rollback behavior:
+  - redeploy a known-good commit before namespace cutover behavior
 - Effect:
-  - write path returns to old namespace
-  - reads remain compatible with old namespace
+  - restores previous namespace read/write behavior from that release
 
 Use this if:
 - owner migrations fail repeatedly

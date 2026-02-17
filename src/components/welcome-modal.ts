@@ -14,10 +14,10 @@ import { addSection, updateConfig, updateTheme, saveConfig } from '../config';
 import { getProfile } from '../at-client';
 import { generateThemeFromDid } from '../themes/engine';
 import { getSafeHandle, getDisplayHandle } from '../utils/identity';
+import { createHelpTooltip } from '../utils/help-tooltip';
 import { SiteRouter } from './site-router';
 import type { ATRecord } from '../types';
 import './did-visualization';
-import './theme-metadata';
 
 type WelcomeAction =
   | 'load-records'
@@ -101,13 +101,15 @@ class WelcomeModal extends HTMLElement {
         <div id="onboarding-step-2" style="display: none;">
           <h2 class="theme-generated-title">Your unique theme has been generated!</h2>
           <p class="theme-generated-subtitle">Here is a visualization of your DID:</p>
-          <did-visualization did="${this.did}"></did-visualization>
+          <div class="did-visualization-row">
+            <did-visualization did="${this.did}"></did-visualization>
+            <span id="theme-details-tooltip-anchor"></span>
+          </div>
           <p class="favicon-note">This is the generated favicon for your garden's page.</p>
           <div class="generative-art-explanation">
-            <p>Your DID (Decentralized Identifier) generates a unique visual flower pattern. This is your digital signature—no two gardens look the same, and your flower remains consistent across the network.</p>
+            <p>Your DID (Decentralized Identifier) generates a unique visual flower pattern. This is your digital signature: no two gardens look the same, and your flower remains consistent across the network.</p>
             <p>The colors, patterns, and shape are derived from your DID's cryptographic hash, creating a one-of-a-kind garden theme that's yours forever.</p>
           </div>
-          <theme-metadata></theme-metadata>
           <button id="save-continue-btn" class="button button-primary">Save & Continue</button>
           </div>
       </div>
@@ -140,9 +142,29 @@ class WelcomeModal extends HTMLElement {
           (this.querySelector('#onboarding-step-1') as HTMLElement).style.display = 'none';
           (this.querySelector('#onboarding-step-2') as HTMLElement).style.display = 'block';
 
-          const themeMetadataEl = this.querySelector('theme-metadata');
-          if (themeMetadataEl) {
-            themeMetadataEl.setAttribute('metadata', JSON.stringify({ theme, metadata }));
+          const themeDetailsAnchor = this.querySelector('#theme-details-tooltip-anchor');
+          if (themeDetailsAnchor) {
+            const swatchStyle = (color: string) =>
+              `display:inline-block;width:0.9rem;height:0.9rem;border:1px solid #999;background:${this.escapeHtml(color)};vertical-align:middle;margin-right:0.35rem;`;
+            const safeHeadingFont = this.escapeHtml(theme.fonts.heading);
+            const safeBodyFont = this.escapeHtml(theme.fonts.body);
+            const safeBorderWidth = this.escapeHtml(theme.borderWidth);
+            const safeBorderStyle = this.escapeHtml(theme.borderStyle);
+            const details = `
+              <div style="font-weight:700;margin-bottom:0.4rem;">Theme Generation Details</div>
+              <div style="font-size:0.8125rem;line-height:1.45;">
+                <div><strong>Base Hue:</strong> ${metadata.hue}&deg;</div>
+                <div><strong>Background Color:</strong> <span style="${swatchStyle(theme.colors.background)}"></span>${this.escapeHtml(theme.colors.background)}</div>
+                <div><strong>Text Color:</strong> <span style="${swatchStyle(theme.colors.text)}"></span>${this.escapeHtml(theme.colors.text)} (chosen for contrast)</div>
+                <div><strong>Primary Color:</strong> <span style="${swatchStyle(theme.colors.primary)}"></span>${this.escapeHtml(theme.colors.primary)}</div>
+                <div><strong>Accent Color:</strong> <span style="${swatchStyle(theme.colors.accent)}"></span>${this.escapeHtml(theme.colors.accent)}</div>
+                <div><strong>Font Pairing:</strong> <span style="font-family:${safeHeadingFont};">${safeHeadingFont}</span> / <span style="font-family:${safeBodyFont};">${safeBodyFont}</span></div>
+                <div><strong>Border:</strong> <span style="display:inline-block;width:1.5rem;height:0.95rem;border:${safeBorderWidth} ${safeBorderStyle} #111;vertical-align:middle;margin-right:0.35rem;"></span>${safeBorderWidth} ${safeBorderStyle}</div>
+              </div>
+            `;
+            const tooltip = createHelpTooltip(details, { allowHtml: true });
+            tooltip.classList.add('theme-details-help-tooltip');
+            themeDetailsAnchor.replaceChildren(tooltip);
           }
         }
       });

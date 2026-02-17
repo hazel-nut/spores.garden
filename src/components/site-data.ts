@@ -1,7 +1,5 @@
 import { describeRepo, listRecords, getRecord, getProfile } from '../at-client';
 import { getCurrentDid, logout, getAgent, deleteRecord, putRecord } from '../oauth';
-import { getSiteOwnerDid, migrateOwnerNsidRecords } from '../config';
-import { setNsidMigrationEnabledForTests } from '../config/nsid';
 import { NEW_NSID_PREFIX, OLD_NSID_PREFIX, SPORE_COLLECTION_KEYS, getCollection } from '../config/nsid';
 import { showConfirmModal } from '../utils/confirm-modal';
 import { debugLog } from '../utils/logger';
@@ -57,6 +55,25 @@ export class SiteData {
         return all;
     }
 
+    private containsBlobRef(value: unknown): boolean {
+        if (!value || typeof value !== 'object') return false;
+        if (Array.isArray(value)) return value.some((item) => this.containsBlobRef(item));
+
+        const obj = value as Record<string, unknown>;
+        if (obj.$type === 'blob') return true;
+        const hasBlobShape =
+            (typeof obj.mimeType === 'string' || typeof obj.size === 'number')
+            && !!obj.ref
+            && typeof obj.ref === 'object'
+            && obj.ref !== null
+            && '$link' in (obj.ref as Record<string, unknown>);
+        if (hasBlobShape) {
+            return true;
+        }
+
+        return Object.values(obj).some((entry) => this.containsBlobRef(entry));
+    }
+
     async backupGardenData() {
         const currentDid = getCurrentDid();
         if (!currentDid) {
@@ -105,25 +122,6 @@ export class SiteData {
         }
     }
 
-    async forceOwnerNsidMigrationNow() {
-        const ownerDid = getSiteOwnerDid() || getCurrentDid();
-        if (!ownerDid) {
-            this.showNotification('No owner DID found for migration.', 'error');
-            return;
-        }
-
-        try {
-            // Localhost-only dev flow: force flag on for this running session.
-            setNsidMigrationEnabledForTests(true);
-            this.showNotification('Running NSID migration...', 'success');
-            await migrateOwnerNsidRecords(ownerDid);
-            this.showNotification('NSID migration attempted. Reload to verify.', 'success');
-        } catch (error: any) {
-            console.error('Failed to run owner NSID migration:', error);
-            this.showNotification(`Migration failed: ${error?.message || 'unknown error'}`, 'error');
-        }
-    }
-
     async restoreGardenDataFromFile() {
         const currentDid = getCurrentDid();
         if (!currentDid) {
@@ -162,6 +160,9 @@ export class SiteData {
 
                 this.showNotification('Restoring garden data...', 'success');
                 let written = 0;
+                let skipped = 0;
+                const skippedBlobRecords: string[] = [];
+                const failedRecords: string[] = [];
 
                 for (const [collection, records] of Object.entries(collections)) {
                     if (!Array.isArray(records)) continue;
@@ -170,12 +171,37 @@ export class SiteData {
                         const rkey = uri.split('/').pop();
                         const value = record?.value;
                         if (!rkey || !value || typeof value !== 'object') continue;
-                        await putRecord(collection, rkey, value);
-                        written += 1;
+                        if (this.containsBlobRef(value)) {
+                            skipped += 1;
+                            skippedBlobRecords.push(`${collection}/${rkey}`);
+                            continue;
+                        }
+                        try {
+                            await putRecord(collection, rkey, value);
+                            written += 1;
+                        } catch (error: any) {
+                            const msg = String(error?.message || error || '');
+                            const recordId = `${collection}/${rkey}`;
+                            if (msg.includes('Could not find blob')) {
+                                skipped += 1;
+                                skippedBlobRecords.push(recordId);
+                                continue;
+                            }
+                            failedRecords.push(`${recordId}: ${msg}`);
+                        }
                     }
                 }
 
-                this.showNotification(`Restore complete (${written} records). Refreshing...`, 'success');
+                if (failedRecords.length > 0) {
+                    throw new Error(`Restore failed on ${failedRecords.length} record(s). First error: ${failedRecords[0]}`);
+                }
+
+                if (skipped > 0) {
+                    console.warn('Restore skipped records with missing blobs:', skippedBlobRecords);
+                    this.showNotification(`Restore complete (${written} records). Skipped ${skipped} record(s) with missing blobs.`, 'error');
+                } else {
+                    this.showNotification(`Restore complete (${written} records). Refreshing...`, 'success');
+                }
                 setTimeout(() => location.reload(), 800);
             } catch (error: any) {
                 console.error('Failed to restore garden data:', error);

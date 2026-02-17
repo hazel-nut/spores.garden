@@ -33,12 +33,10 @@ If NSID migration is part of this launch:
 
 1. Confirm `coop.hypha.spores.*` lexicons are published.
 2. Confirm `_lexicon` TXT records resolve publicly for all authority groups.
-3. Enable migration switch in `src/config/nsid.ts` as planned.
-   - deployment env: `VITE_NSID_MIGRATION_ENABLED=true`
-4. Validate owner migration on a staging DID and one production canary DID.
-5. Monitor migration success/errors before full ramp.
+3. Validate owner migration on a staging DID and one production canary DID.
+4. Monitor migration success/errors before full ramp.
 
-If DNS is not ready, keep migration disabled and launch app changes only.
+If DNS is not ready, do not deploy namespace cutover changes.
 
 ## 5. Post-Deploy Verification (First 60 Minutes)
 

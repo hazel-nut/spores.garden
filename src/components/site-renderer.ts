@@ -606,14 +606,6 @@ export class SiteRenderer {
             devResetBtn.addEventListener('click', () => this.data.resetGardenData());
             devTools.appendChild(devResetBtn);
 
-            const devMigrateBtn = document.createElement('button');
-            devMigrateBtn.className = 'dev-tool-button dev-tool-button-migrate';
-            devMigrateBtn.textContent = 'Force NSID Migration';
-            devMigrateBtn.setAttribute('aria-label', 'Force owner NSID migration for this session (dev only)');
-            devMigrateBtn.title = 'Force owner NSID migration now';
-            devMigrateBtn.addEventListener('click', () => this.data.forceOwnerNsidMigrationNow());
-            devTools.appendChild(devMigrateBtn);
-
             const devRestoreBtn = document.createElement('button');
             devRestoreBtn.className = 'dev-tool-button dev-tool-button-restore';
             devRestoreBtn.textContent = 'Restore Garden Data';

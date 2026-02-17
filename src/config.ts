@@ -12,12 +12,10 @@ import {
 } from './utils/garden-url';
 import { isValidSpore, shouldReceiveInitialSpore } from './utils/spore-validation';
 import {
-  NSID_MIGRATION_VERSION,
   SPORE_COLLECTION_KEYS,
   getCollection,
   getReadNamespaces,
   getWriteNamespace,
-  isNsidMigrationEnabled,
 } from './config/nsid';
 import {
   buildSectionRecordForSave,
@@ -165,7 +163,12 @@ export async function initConfig() {
     }
   }
 
-  await migrateOwnerNsidRecords(siteOwnerDid);
+  const currentDid = getCurrentDid();
+  if (currentDid) {
+    void migrateOwnerNsidRecords(currentDid).catch((error) => {
+      console.warn('[initConfig] Background NSID migration failed:', error);
+    });
+  }
 
   const loaded = await loadUserConfig(siteOwnerDid);
   if (loaded === null) {
@@ -214,18 +217,16 @@ export function setSiteOwnerDid(did) {
 
 export async function migrateOwnerNsidRecords(did: string): Promise<void> {
   return migrateOwnerNsidRecordsImpl(did, {
-    isNsidMigrationEnabled,
     isLoggedIn,
     getCurrentDid,
-    getCollections,
     getCollection,
     SPORE_COLLECTION_KEYS,
     getRecord,
     putRecord,
+    deleteRecord,
     listRecords,
     rewriteRecordPayloadForNamespace,
     CONFIG_RKEY,
-    NSID_MIGRATION_VERSION,
     debugLog,
   });
 }

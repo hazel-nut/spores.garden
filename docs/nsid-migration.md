@@ -56,19 +56,13 @@ Phase 3 (sunset):
 
 - Runtime has namespace mapping helpers in `src/config/nsid.ts`.
 - Owner-only migration routine is implemented in `src/config/nsid-migration.ts` and wired from `src/config.ts` (`migrateOwnerNsidRecords`).
-- Rollout switch exists via deployment env `VITE_NSID_MIGRATION_ENABLED` (read by `src/config/nsid.ts`).
-  - `false`: old-only behavior
-  - `true`: read-new/read-old fallback + write-new + owner migration
+- Runtime now defaults to read-new/read-old fallback + write-new + owner migration.
 
 ## Migration Trigger
 
 Run migration only when all are true:
 - user is logged in
 - viewed garden owner DID equals current DID
-- migration marker shows not completed for this DID
-
-Suggested marker record:
-- `coop.hypha.spores.site.config` field: `nsidMigrationVersion: 1`
 
 ## One-Time Migration Algorithm
 
@@ -83,8 +77,7 @@ Suggested marker record:
    - rewrite section URIs from old section collection to new section collection
 5. Migrate social/item records in owner's repo:
    - copy forward with same payload
-6. Set migration marker (`nsidMigrationVersion: 1`) in new config record.
-7. Keep old records in place during stabilization window.
+6. Keep old records in place during stabilization window.
 
 ## URI Rewrite Rules
 
@@ -100,12 +93,11 @@ Rewrite applies to:
 
 - Use upsert semantics for `self` records (`putRecord`).
 - For collection records, check existence before creating duplicates when practical.
-- If marker exists and equals current version, skip migration.
+- If new namespace already contains the needed records (same singleton records and same rkeys for list collections), skip writes.
 - Migration can be re-run safely; each step should be deterministic.
 
 ## Failure and Recovery
 
-- If migration fails mid-run, do not set marker.
 - On next owner session, retry from start.
 - Log step-level errors with collection/rkey context.
 - Continue rendering from old data while migration incomplete.
@@ -123,14 +115,14 @@ During stabilization:
 2. Add namespace-aware constants and mapping helpers.
 3. Implement read-old/read-new in loaders.
 4. Implement write-new paths.
-5. Implement owner migration routine + marker.
+5. Implement owner migration routine with parity checks.
 6. Add telemetry/logging around migration outcomes.
 7. Announce and later enforce old namespace sunset.
 
 ## Test Checklist
 
 - New user creates garden entirely in new namespace.
-- Existing user migrates once and marker is set.
+- Existing user migrates once and repeat load performs no duplicate writes.
 - Existing user with partial migration resumes successfully.
 - Section/layout URI rewrites are correct.
 - App remains functional if migration is interrupted.
@@ -168,7 +160,5 @@ Use this checklist when you are ready to cut over from `garden.spores.*` to `coo
    - DNS TXT records resolve publicly.
    - Lexicon records are fetchable by NSID from the mapped DID repo.
 4. Merge and deploy app code containing namespace migration support.
-5. Enable rollout switch in deployment config:
-   - set `VITE_NSID_MIGRATION_ENABLED=true`
-6. Monitor migration logs and owner-session migrations.
-7. After stabilization window, move to sunset policy (read new only).
+5. Monitor migration logs and owner-session migrations.
+6. After stabilization window, move to sunset policy (read new only).

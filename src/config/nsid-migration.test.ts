@@ -44,18 +44,16 @@ function getCollection(key: string, namespace: 'old' | 'new' = 'old'): string {
 
 function makeDeps(overrides: Record<string, any> = {}) {
   return {
-    isNsidMigrationEnabled: vi.fn(() => true),
     isLoggedIn: vi.fn(() => true),
     getCurrentDid: vi.fn(() => DID),
-    getCollections: vi.fn((namespace: 'old' | 'new') => (namespace === 'new' ? NEW : OLD)),
     getCollection: vi.fn(getCollection),
     SPORE_COLLECTION_KEYS: ['siteConfig', 'siteLayout', 'siteSection', 'siteProfile', 'contentText', 'itemSpecialSpore'],
     getRecord: vi.fn(async () => null),
     putRecord: vi.fn(async () => ({})),
+    deleteRecord: vi.fn(async () => ({})),
     listRecords: vi.fn(async () => ({ records: [] })),
     rewriteRecordPayloadForNamespace: vi.fn((_: string, value: any) => value),
     CONFIG_RKEY: 'self',
-    NSID_MIGRATION_VERSION: 1,
     debugLog: vi.fn(),
     ...overrides,
   };
@@ -75,14 +73,15 @@ describe('migrateOwnerNsidRecordsImpl', () => {
 
     expect(deps.getRecord).not.toHaveBeenCalled();
     expect(deps.putRecord).not.toHaveBeenCalled();
+    expect(deps.deleteRecord).not.toHaveBeenCalled();
     expect(deps.listRecords).not.toHaveBeenCalled();
   });
 
-  it('skips when migration marker is already at current version', async () => {
+  it('skips writes when new singleton records already exist', async () => {
     const deps = makeDeps({
       getRecord: vi.fn(async (_did: string, collection: string) => {
         if (collection === NEW.CONFIG_COLLECTION) {
-          return { value: { nsidMigrationVersion: 1 } };
+          return { value: { $type: NEW.CONFIG_COLLECTION, title: 'New Title' } };
         }
         return null;
       }),
@@ -91,10 +90,11 @@ describe('migrateOwnerNsidRecordsImpl', () => {
     await migrateOwnerNsidRecordsImpl(DID, deps);
 
     expect(deps.putRecord).not.toHaveBeenCalled();
-    expect(deps.listRecords).not.toHaveBeenCalled();
+    expect(deps.deleteRecord).not.toHaveBeenCalled();
+    expect(deps.listRecords).toHaveBeenCalledTimes(3);
   });
 
-  it('migrates paginated old records and writes migration marker', async () => {
+  it('migrates paginated old records and singleton records', async () => {
     const deps = makeDeps({
       listRecords: vi.fn(async (_did: string, collection: string, options?: { cursor?: string }) => {
         if (collection !== OLD.SECTION_COLLECTION) return { records: [] };
@@ -142,10 +142,43 @@ describe('migrateOwnerNsidRecordsImpl', () => {
       'self',
       expect.objectContaining({
         $type: NEW.CONFIG_COLLECTION,
-        nsidMigrationVersion: 1,
         title: 'Legacy Title',
       })
     );
+    expect(deps.deleteRecord).toHaveBeenCalledWith(OLD.CONFIG_COLLECTION, 'self');
+  });
+
+  it('does not rewrite multi-record collections when new namespace already contains the same rkeys', async () => {
+    const deps = makeDeps({
+      listRecords: vi.fn(async (_did: string, collection: string) => {
+        if (collection === OLD.SECTION_COLLECTION) {
+          return {
+            records: [
+              {
+                uri: `at://${DID}/${OLD.SECTION_COLLECTION}/same-rkey`,
+                value: { $type: OLD.SECTION_COLLECTION, type: 'content' },
+              },
+            ],
+          };
+        }
+        if (collection === NEW.SECTION_COLLECTION) {
+          return {
+            records: [
+              {
+                uri: `at://${DID}/${NEW.SECTION_COLLECTION}/same-rkey`,
+                value: { $type: NEW.SECTION_COLLECTION, type: 'content' },
+              },
+            ],
+          };
+        }
+        return { records: [] };
+      }),
+    });
+
+    await migrateOwnerNsidRecordsImpl(DID, deps);
+
+    expect(deps.putRecord).not.toHaveBeenCalled();
+    expect(deps.deleteRecord).toHaveBeenCalledWith(OLD.SECTION_COLLECTION, 'same-rkey');
   });
 
   it('stops paginating when cursor repeats to avoid infinite loops', async () => {

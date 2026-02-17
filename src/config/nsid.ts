@@ -1,20 +1,5 @@
 export type NsidNamespace = 'old' | 'new';
 
-export const NSID_MIGRATION_VERSION = 1;
-
-export function parseNsidMigrationEnabled(value: string | undefined): boolean {
-  if (!value) return false;
-  const normalized = value.trim().toLowerCase();
-  return normalized === '1' || normalized === 'true' || normalized === 'yes' || normalized === 'on';
-}
-
-function readNsidMigrationFlagFromEnv(): boolean {
-  const env = (import.meta as any)?.env;
-  return parseNsidMigrationEnabled(env?.VITE_NSID_MIGRATION_ENABLED);
-}
-
-let nsidMigrationEnabled = readNsidMigrationFlagFromEnv();
-
 export const OLD_NSID_PREFIX = 'garden.spores';
 export const NEW_NSID_PREFIX = 'coop.hypha.spores';
 
@@ -81,20 +66,12 @@ const NEW_TO_OLD = new Map<string, string>(
   })
 );
 
-export function isNsidMigrationEnabled(): boolean {
-  return nsidMigrationEnabled;
-}
-
 export function getWriteNamespace(): NsidNamespace {
-  return nsidMigrationEnabled ? 'new' : 'old';
+  return 'new';
 }
 
 export function getReadNamespaces(): NsidNamespace[] {
-  return nsidMigrationEnabled ? ['new', 'old'] : ['old'];
-}
-
-export function setNsidMigrationEnabledForTests(enabled: boolean): void {
-  nsidMigrationEnabled = enabled;
+  return ['new', 'old'];
 }
 
 export function getCollection(key: SporeCollectionKey, namespace: NsidNamespace = getWriteNamespace()): string {

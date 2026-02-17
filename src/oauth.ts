@@ -352,7 +352,7 @@ export async function createRecord(collection: string, record: unknown) {
       }
     }
   } catch (error) {
-    console.warn('Failed to resolve PDS for createRecord, client will use default:', error);
+    debugLog('PDS resolution failed for createRecord; using default client');
   }
 
   // Create client with explicit service URL if we have it
@@ -414,7 +414,7 @@ export async function putRecord(collection: string, rkey: string, record: unknow
       }
     }
   } catch (error) {
-    console.warn('Failed to resolve PDS for putRecord, client will use default:', error);
+    debugLog('PDS resolution failed for putRecord; using default client');
   }
 
   // Create client with explicit service URL if we have it
@@ -472,7 +472,7 @@ export async function deleteRecord(collection: string, rkey: string) {
       }
     }
   } catch (error) {
-    console.warn('Failed to resolve PDS for deleteRecord, client will use default:', error);
+    debugLog('PDS resolution failed for deleteRecord; using default client');
   }
 
   // Create client with explicit service URL if we have it
@@ -530,7 +530,7 @@ export async function post(record: unknown) {
       }
     }
   } catch (error) {
-    console.warn('Failed to resolve PDS for post, client will use default:', error);
+    debugLog('PDS resolution failed for post; using default client');
   }
 
   // Create client with explicit service URL if we have it

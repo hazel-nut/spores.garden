@@ -22,9 +22,6 @@ Use this checklist before promoting a release to production.
 
 ## 3) App Rollout Controls
 
-- `VITE_NSID_MIGRATION_ENABLED` deployment setting reviewed:
-  - unset / `false` for pre-rollout
-  - `true` for migration rollout
 - Owner migration behavior validated in staging.
 
 ## 4) Documentation

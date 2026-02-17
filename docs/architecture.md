@@ -52,7 +52,7 @@ High-level data path:
 - Source namespace: `garden.spores.*`
 - Target namespace: `coop.hypha.spores.*`
 - Runtime policy is controlled in `src/config/nsid.ts`.
-- Owner migration is idempotent and marker-based (`nsidMigrationVersion`).
+- Owner migration is idempotent and parity-based (old/new collection presence + rkey coverage).
 - During rollout, reads support fallback while writes target the new namespace.
 
 See `docs/nsid-migration.md` for rollout phases and launch specifics.
