@@ -110,6 +110,7 @@ class WelcomeModal extends HTMLElement {
             <p>Your DID (Decentralized Identifier) generates a unique visual flower pattern. This is your digital signature: no two gardens look the same, and your flower remains consistent across the network.</p>
             <p>The colors, patterns, and shape are derived from your DID's cryptographic hash, creating a one-of-a-kind garden theme that's yours forever.</p>
           </div>
+          <p class="favicon-note">Some gardens hold a special spore. If you find one, open it to follow its lineage or capture it.</p>
           <button id="save-continue-btn" class="button button-primary">Save & Continue</button>
           </div>
       </div>
