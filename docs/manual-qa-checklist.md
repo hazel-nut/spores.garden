@@ -13,7 +13,7 @@ Use this checklist for release-candidate validation in real browsers before laun
 
 - [ ] Open `/` while logged out: page loads and Connect button is visible.
 - [ ] Open `/@<valid-handle>`: handle resolves and URL remains canonical `@handle`.
-- [ ] Open `/@did:plc:<did>`: garden preview/shell renders.
+- [ ] Open `/did:plc:<did>`: garden preview/shell renders.
 - [ ] Open `/@<invalid-handle>`: redirect to `/` and handle-not-found notice appears.
 - [ ] Dismiss notification and confirm it stays dismissed.
 

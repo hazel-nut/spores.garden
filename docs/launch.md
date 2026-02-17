@@ -23,7 +23,7 @@ This runbook is the day-of-launch execution guide for spores.garden.
 3. Confirm production routes:
    - `/`
    - `/@<handle>`
-   - `/@did:plc:<did>`
+   - `/did:plc:<did>`
 4. Validate owner login + edit/save flow.
 5. Validate non-owner read-only flow.
 

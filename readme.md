@@ -18,7 +18,7 @@ You will see a "Connect" button. Log in with your Bluesky/AT Protocol handle (e.
 
 You can also directly view gardens by URL:
 - `http://127.0.0.1:5174/@your-handle.bsky.social` (path-based with handle)
-- `http://127.0.0.1:5174/@did:plc:your-did-here` (path-based with DID)
+- `http://127.0.0.1:5174/did:plc:your-did-here` (path-based with DID)
 
 ## How It Works
 
@@ -147,7 +147,6 @@ Verbose runtime logs are disabled by default. Enable them when debugging with ei
 - [Special Spore Documentation](docs/special-spore.md) - Special spore mechanics and implementation
 - [NSID Migration Plan](docs/nsid-migration.md) - Namespace migration strategy and launch checklist
 - [Onboarding Validation Runbook](docs/onboarding-validation.md) - Backup/reset/restore workflow for onboarding QA
-- [Leaflet.pub Schema Notes](docs/leaflet-pub-schema-notes.md) - Notes on leaflet.pub integration
 - [Release Checklist](docs/release-checklist.md) - Final pre-launch verification steps
 - [Launch Runbook](docs/launch.md) - Day-of-launch execution and cutover steps
 - [Rollback Playbook](docs/rollback-playbook.md) - Incident response and rollback levers

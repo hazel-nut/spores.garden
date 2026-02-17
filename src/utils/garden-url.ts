@@ -12,7 +12,7 @@ export function buildGardenPath(identifier: string): string {
 
 /**
  * Parse identifier from URL (supports both path-based and query params)
- * Supports: /@handle, /@did, /handle (legacy shorthand), ?handle=..., ?did=...
+ * Supports: /@handle, /did:..., /handle (legacy shorthand), ?handle=..., ?did=...
  */
 export function parseIdentifierFromUrl(loc: Location = location): UrlIdentifier | null {
   const pathMatch = loc.pathname.match(/^\/@(.+)$/);

@@ -8,7 +8,7 @@ spores.garden is a static browser app that renders a personal site from AT Proto
 
 High-level data path:
 
-1. User opens a route (`/`, `/@handle`, or `/@did:plc:...`).
+1. User opens a route (`/`, `/@handle`, or `/did:plc:...`).
 2. App resolves identity (handle -> DID when needed).
 3. App loads site config/layout/section records from owner repo.
 4. App loads referenced content records and renders layouts.
