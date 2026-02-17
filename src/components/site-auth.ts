@@ -99,7 +99,7 @@ export class SiteAuth {
       <div class="modal-content login-modal-content" role="dialog" aria-modal="true" aria-labelledby="login-modal-title">
         <h2 id="login-modal-title">Login with Bluesky or ATProto</h2>
         <form class="login-form">
-          <label for="login-handle">Your Bluesky handle or domain</label>
+          <label for="login-handle" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;">Your Bluesky handle or domain</label>
           <input id="login-handle" type="text" placeholder="your.handle.com" class="input" required>
           <button type="submit" class="button">Login</button>
         </form>
