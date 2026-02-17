@@ -64,8 +64,14 @@ export async function migrateOwnerNsidRecordsImpl(
     debugLog: (...args: unknown[]) => void;
   }
 ): Promise<void> {
-  if (!deps.isNsidMigrationEnabled()) return;
-  if (!deps.isLoggedIn() || deps.getCurrentDid() !== did) return;
+  if (!deps.isNsidMigrationEnabled()) {
+    deps.debugLog(`[nsid-migration] Skipping migration for ${did}: rollout flag disabled.`);
+    return;
+  }
+  if (!deps.isLoggedIn() || deps.getCurrentDid() !== did) {
+    deps.debugLog(`[nsid-migration] Skipping migration for ${did}: not logged in as owner.`);
+    return;
+  }
 
   const newCollections = deps.getCollections('new');
   const oldCollections = deps.getCollections('old');
@@ -73,6 +79,7 @@ export async function migrateOwnerNsidRecordsImpl(
   try {
     const existingNewConfig = await deps.getRecord(did, newCollections.CONFIG_COLLECTION, deps.CONFIG_RKEY);
     if (existingNewConfig?.value?.nsidMigrationVersion >= deps.NSID_MIGRATION_VERSION) {
+      deps.debugLog(`[nsid-migration] Skipping migration for ${did}: marker already set.`);
       return;
     }
 

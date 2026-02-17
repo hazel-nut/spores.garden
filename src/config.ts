@@ -474,9 +474,6 @@ export async function saveConfig({ isInitialOnboarding = false } = {}) {
     headingFont: currentConfig.headingFont || currentConfig.fontHeading || undefined,
     bodyFont: currentConfig.bodyFont || currentConfig.fontBody || undefined,
   };
-  if (isNsidMigrationEnabled()) {
-    configToSave.nsidMigrationVersion = NSID_MIGRATION_VERSION;
-  }
   promises.push(putRecord(collections.CONFIG_COLLECTION, CONFIG_RKEY, configToSave));
 
   const updatedSections = await Promise.all(currentConfig.sections.map(async (rawSection) => {

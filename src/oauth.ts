@@ -50,6 +50,7 @@ let oauthConfig: OAuthConfig | null = null;
 let currentAgent: OAuthUserAgent | null = null;
 let currentSession: Session | null = null;
 let identityResolver: ReturnType<typeof defaultIdentityResolver> | null = null;
+const DP0P_NONCE_ERROR = 'use_dpop_nonce';
 
 /**
  * Initialize OAuth configuration
@@ -362,26 +363,29 @@ export async function createRecord(collection: string, record: unknown) {
 
   const client = new Client(clientOptions);
 
+  const runCreateRecord = async () => (client as any).post('com.atproto.repo.createRecord', {
+    input: {
+      repo: currentSession.info.sub,
+      collection,
+      record
+    }
+  });
+
   try {
-    // Use post() for procedures (createRecord is a procedure)
-    const response = await (client as any).post('com.atproto.repo.createRecord', {
-      input: {
-        repo: currentSession.info.sub,
-        collection,
-        record
-      }
-    });
+    let response = await runCreateRecord();
+    if (!response.ok && response.data?.error === DP0P_NONCE_ERROR) {
+      response = await runCreateRecord();
+    }
 
     if (!response.ok) {
       const status = (response as { status?: number }).status;
-      if (status === 401 || status === 403) {
+      const errorMsg = response.data?.message || response.data?.error || 'Unknown error';
+      if ((status === 401 || status === 403) && response.data?.error !== DP0P_NONCE_ERROR) {
         clearSessionDueToAuthFailure();
         throw new Error('Session expired, please log in again.');
       }
-      const errorMsg = response.data?.message || response.data?.error || 'Unknown error';
       throw new Error(`Failed to create record: ${errorMsg}`);
     }
-
     return response.data;
   } catch (error) {
     console.error('createRecord error:', error);
@@ -421,8 +425,7 @@ export async function putRecord(collection: string, rkey: string, record: unknow
 
   const client = new Client(clientOptions);
 
-  // Use post() for procedures (putRecord is a procedure)
-  const response = await (client as any).post('com.atproto.repo.putRecord', {
+  const runPutRecord = async () => (client as any).post('com.atproto.repo.putRecord', {
     input: {
       repo: currentSession.info.sub,
       collection,
@@ -430,10 +433,14 @@ export async function putRecord(collection: string, rkey: string, record: unknow
       record
     }
   });
+  let response = await runPutRecord();
+  if (!response.ok && response.data?.error === DP0P_NONCE_ERROR) {
+    response = await runPutRecord();
+  }
 
   if (!response.ok) {
     const status = (response as { status?: number }).status;
-    if (status === 401 || status === 403) {
+    if ((status === 401 || status === 403) && response.data?.error !== DP0P_NONCE_ERROR) {
       clearSessionDueToAuthFailure();
       throw new Error('Session expired, please log in again.');
     }
@@ -476,17 +483,20 @@ export async function deleteRecord(collection: string, rkey: string) {
 
   const client = new Client(clientOptions);
 
-  // Use post() for procedures (deleteRecord is a procedure)
-  const response = await (client as any).post('com.atproto.repo.deleteRecord', {
+  const runDeleteRecord = async () => (client as any).post('com.atproto.repo.deleteRecord', {
     input: {
       repo: currentSession.info.sub,
       collection,
       rkey
     }
   });
+  let response = await runDeleteRecord();
+  if (!response.ok && response.data?.error === DP0P_NONCE_ERROR) {
+    response = await runDeleteRecord();
+  }
 
   if (!response.ok) {
-    if (response.status === 401 || response.status === 403) {
+    if ((response.status === 401 || response.status === 403) && response.data?.error !== DP0P_NONCE_ERROR) {
       clearSessionDueToAuthFailure();
       throw new Error('Session expired, please log in again.');
     }
