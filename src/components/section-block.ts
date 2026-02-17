@@ -15,6 +15,7 @@ import { createErrorMessage, createLoadingSpinner } from '../utils/loading-state
 import { showConfirmModal } from '../utils/confirm-modal';
 import { createHelpTooltip } from '../utils/help-tooltip';
 import { renderMarkdown } from '../utils/markdown';
+import { sanitizeHtml } from '../utils/sanitize';
 import './create-profile'; // Register profile editor component
 import './create-image'; // Register image editor component
 
@@ -776,7 +777,8 @@ class SectionBlock extends HTMLElement {
 
     try {
       if (format === 'html') {
-        contentDiv.innerHTML = content;
+        // Legacy support: existing HTML blocks still render, but sanitized.
+        contentDiv.innerHTML = sanitizeHtml(content);
       } else if (format === 'markdown') {
         contentDiv.innerHTML = renderMarkdown(content);
       } else {
