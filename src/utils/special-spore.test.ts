@@ -3,6 +3,7 @@ import { findSporeByOrigin, stealSpore } from './special-spore';
 import { getBacklinks, getRecord } from '../at-client';
 import { createRecord } from '../oauth';
 import { showAlertModal } from './confirm-modal';
+import { getCollection } from '../config/nsid';
 
 vi.mock('../at-client', () => ({
   getBacklinks: vi.fn(),
@@ -90,8 +91,9 @@ describe('special spore guardrails', () => {
 
     await stealSpore('did:plc:origin', 'did:plc:new-owner', 'current-owner');
 
-    expect(createRecord).toHaveBeenCalledWith('garden.spores.item.specialSpore', expect.objectContaining({
-      $type: 'garden.spores.item.specialSpore',
+    const specialSporeCollection = getCollection('itemSpecialSpore');
+    expect(createRecord).toHaveBeenCalledWith(specialSporeCollection, expect.objectContaining({
+      $type: specialSporeCollection,
       subject: 'did:plc:origin',
     }));
     expect(showAlertModal).toHaveBeenCalled();

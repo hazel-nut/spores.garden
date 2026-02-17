@@ -2002,6 +2002,11 @@ body.has-pattern .flower-grid-item {
   border-color: #14532d;
 }
 
+.dev-tool-button-migrate {
+  background: #7c3aed;
+  border-color: #6d28d9;
+}
+
 .dev-tool-button:hover {
   transform: translateY(-2px);
   box-shadow: 0 6px 8px rgba(0, 0, 0, 0.4);
@@ -2020,6 +2025,11 @@ body.has-pattern .flower-grid-item {
 .dev-tool-button-restore:hover {
   background: #14532d;
   border-color: #052e16;
+}
+
+.dev-tool-button-migrate:hover {
+  background: #6d28d9;
+  border-color: #5b21b6;
 }
 
 .dev-tool-button:active {

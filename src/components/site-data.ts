@@ -1,5 +1,7 @@
 import { describeRepo, listRecords, getRecord, getProfile } from '../at-client';
 import { getCurrentDid, logout, getAgent, deleteRecord, putRecord } from '../oauth';
+import { getSiteOwnerDid, migrateOwnerNsidRecords } from '../config';
+import { setNsidMigrationEnabledForTests } from '../config/nsid';
 import { NEW_NSID_PREFIX, OLD_NSID_PREFIX, SPORE_COLLECTION_KEYS, getCollection } from '../config/nsid';
 import { showConfirmModal } from '../utils/confirm-modal';
 import { debugLog } from '../utils/logger';
@@ -100,6 +102,25 @@ export class SiteData {
         } catch (error: any) {
             console.error('Failed to backup garden data:', error);
             this.showNotification(`Backup failed: ${error?.message || 'unknown error'}`, 'error');
+        }
+    }
+
+    async forceOwnerNsidMigrationNow() {
+        const ownerDid = getSiteOwnerDid() || getCurrentDid();
+        if (!ownerDid) {
+            this.showNotification('No owner DID found for migration.', 'error');
+            return;
+        }
+
+        try {
+            // Localhost-only dev flow: force flag on for this running session.
+            setNsidMigrationEnabledForTests(true);
+            this.showNotification('Running NSID migration...', 'success');
+            await migrateOwnerNsidRecords(ownerDid);
+            this.showNotification('NSID migration attempted. Reload to verify.', 'success');
+        } catch (error: any) {
+            console.error('Failed to run owner NSID migration:', error);
+            this.showNotification(`Migration failed: ${error?.message || 'unknown error'}`, 'error');
         }
     }
 
