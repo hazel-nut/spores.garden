@@ -66,6 +66,7 @@ interface LexiconSchema {
   title?: FieldMapping;
   pronouns?: FieldMapping;
   content?: FieldMapping;
+  description?: FieldMapping;
   url?: FieldMapping;
   image?: FieldMapping;
   images?: FieldMapping;
@@ -303,7 +304,7 @@ const LEXICON_SCHEMAS: Record<string, LexiconSchema> = {
     preferredLayout: 'smoke-signal'
   },
 
-  // Leaflet.pub Document (long-form publishing)
+  // Standard.site / Leaflet Document (long-form publishing)
   'pub.leaflet.document': {
     title: 'title',
     date: 'publishedAt',
@@ -319,7 +320,12 @@ const LEXICON_SCHEMAS: Record<string, LexiconSchema> = {
     // Store the raw record value for block rendering
     content: (record) => record.value, // We'll extract blocks from this
     url: (record) => {
-      // Generate leaflet.pub URL from postRef or publication
+      // Prefer canonicalUrl when present (standard.site format)
+      const canonicalUrl = record.value?.canonicalUrl;
+      if (typeof canonicalUrl === 'string' && canonicalUrl.startsWith('https://')) {
+        return canonicalUrl;
+      }
+      // Fallback: generate URL from postRef
       const postRef = record.value?.postRef;
       if (postRef?.uri) {
         const match = postRef.uri.match(/at:\/\/([^/]+)\/app\.bsky\.feed\.post\/(.+)$/);
@@ -333,11 +339,12 @@ const LEXICON_SCHEMAS: Record<string, LexiconSchema> = {
     preferredLayout: 'leaflet'
   },
 
-  // Leaflet.pub Document (site standard)
+  // Standard.site Document (site.standard.document)
   'site.standard.document': {
     title: 'title',
     date: 'publishedAt',
     tags: 'tags',
+    description: 'description',
     image: (record) => {
       const coverImage = record.value?.coverImage;
       if (coverImage?.$type === 'blob' && coverImage.ref?.$link) {
@@ -347,6 +354,11 @@ const LEXICON_SCHEMAS: Record<string, LexiconSchema> = {
     },
     content: (record) => record.value?.content || record.value,
     url: (record) => {
+      // Prefer canonicalUrl when present (standard.site format)
+      const canonicalUrl = record.value?.canonicalUrl;
+      if (typeof canonicalUrl === 'string' && canonicalUrl.startsWith('https://')) {
+        return canonicalUrl;
+      }
       const postRef = record.value?.postRef;
       if (postRef?.uri) {
         const match = postRef.uri.match(/at:\/\/([^/]+)\/app\.bsky\.feed\.post\/(.+)$/);
@@ -412,6 +424,7 @@ const FIELD_MAPPINGS = {
   title: ['title', 'name', 'displayName', 'subject', 'heading'],
   pronouns: ['pronouns', 'pronoun'],
   content: ['content', 'text', 'description', 'message', 'body', 'summary', 'bio'],
+  description: ['description', 'summary', 'blurb', 'excerpt'],
   url: ['url', 'uri', 'link', 'href', 'website'],
   image: ['image', 'avatar', 'thumbnail', 'picture', 'photo'],
   images: ['images', 'photos', 'media', 'attachments', 'blobs'],
@@ -513,6 +526,7 @@ export function extractFields(record) {
     title: extractField(record, 'title', lexiconType),
     pronouns: extractField(record, 'pronouns', lexiconType),
     content: extractField(record, 'content', lexiconType),
+    description: extractField(record, 'description', lexiconType),
     url: extractField(record, 'url', lexiconType),
 
     // Media

@@ -1,9 +1,10 @@
 /**
- * Leaflet.pub Long-Form Publishing Layout
- * 
- * Displays long-form articles published via leaflet.pub (AT Protocol long-form publishing).
+ * Standard.site Long-Form Publishing Layout
+ *
+ * Displays long-form articles from site.standard.document (Standard.site / AT Protocol long-form).
  * Renders block-based content structure with support for text, images, headers, lists, and formatting.
- * 
+ * When canonicalUrl is present, links to the canonical URL for full content.
+ *
  * Fields are pre-extracted by the field-extractor before this function is called.
  */
 
@@ -17,12 +18,19 @@ const SITE_STANDARD_DOCUMENT = 'site.standard.document';
 
 /**
  * Fetch the document owner's site.standard.publication and build the read-more URL
- * from publication.url + document rkey (per Standard.site: canonical document URL
+ * from publication.url + document path (per Standard.site: canonical document URL
  * is publication url + document path).
- * Resolves the publication by: (1) document's publication ref (AT URI) if present,
- * (2) else list site.standard.publication for the repo and use the first record.
+ * Resolves the publication by: (1) document's canonicalUrl (preferred),
+ * (2) document's site or publication ref (AT URI), (3) else list site.standard.publication
+ * for the repo and use the first record.
  */
-async function fetchPublicationReadMoreUrl(record: { uri?: string; value?: { publication?: string | { uri?: string } } }): Promise<string | undefined> {
+async function fetchPublicationReadMoreUrl(record: { uri?: string; value?: { canonicalUrl?: string; site?: string | { uri?: string }; publication?: string | { uri?: string } } }): Promise<string | undefined> {
+  // Prefer canonicalUrl when present
+  const canonicalUrl = record.value?.canonicalUrl;
+  if (typeof canonicalUrl === 'string' && canonicalUrl.startsWith('https://')) {
+    return canonicalUrl;
+  }
+
   const uri = record?.uri;
   if (!uri || !uri.includes(SITE_STANDARD_DOCUMENT)) return undefined;
   const parts = uri.split('/');
@@ -32,7 +40,8 @@ async function fetchPublicationReadMoreUrl(record: { uri?: string; value?: { pub
 
   let pub: { value?: { url?: string } } | null = null;
 
-  const publicationRef = record.value?.publication;
+  // Check site or publication ref (Standard.site uses 'site', some use 'publication')
+  const publicationRef = record.value?.site ?? record.value?.publication;
   const publicationUri = typeof publicationRef === 'string' ? publicationRef : publicationRef?.uri;
   if (publicationUri && publicationUri.includes(SITE_STANDARD_PUBLICATION)) {
     pub = await getRecordByUri(publicationUri);
@@ -49,7 +58,7 @@ async function fetchPublicationReadMoreUrl(record: { uri?: string; value?: { pub
 }
 
 /**
- * Append the "Read on leaflet.pub" link block to the article container
+ * Append the "Read full article" link block to the article container
  */
 function appendReadMoreLink(container: HTMLElement, url: string): void {
   const linkBack = document.createElement('div');
@@ -58,14 +67,14 @@ function appendReadMoreLink(container: HTMLElement, url: string): void {
   link.href = url;
   link.target = '_blank';
   link.rel = 'noopener noreferrer';
-  link.textContent = 'Read on leaflet.pub →';
-  link.setAttribute('aria-label', 'Read full article on leaflet.pub - Opens in new tab');
+  link.textContent = 'Read full article →';
+  link.setAttribute('aria-label', 'Read full article - Opens in new tab');
   linkBack.appendChild(link);
   container.appendChild(linkBack);
 }
 
 /**
- * Format a blob URL from a leaflet.pub blob reference
+ * Format a blob URL from a Standard.site blob reference
  */
 function formatLeafletBlobUrl(blob: any, authorDid: string): string | null {
   if (!blob || !blob.ref?.$link) return null;
@@ -73,7 +82,7 @@ function formatLeafletBlobUrl(blob: any, authorDid: string): string | null {
   if (!cid || !authorDid) return null;
   
   // Use CDN URL format similar to Bluesky
-  // Note: This may need adjustment based on how leaflet.pub serves blobs
+  // Note: This may need adjustment based on how Standard.site serves blobs
   return `https://cdn.bsky.app/img/feed_thumbnail/plain/${authorDid}/${cid}@jpeg`;
 }
 
@@ -318,7 +327,7 @@ function renderBlock(block: any, authorDid: string, _depth: number = 0): HTMLEle
 }
 
 /**
- * Render leaflet.pub article blocks
+ * Render Standard.site article blocks
  */
 function renderBlocks(pages: any[], authorDid: string): DocumentFragment {
   const fragment = document.createDocumentFragment();
@@ -338,7 +347,7 @@ function renderBlocks(pages: any[], authorDid: string): DocumentFragment {
 }
 
 /**
- * Render a leaflet.pub article record
+ * Render a Standard.site article record
  * 
  * @param fields - Extracted fields from the record
  * @param record - Original record reference (needed for accessing raw structure)
@@ -356,6 +365,7 @@ export function renderLeaflet(fields: ReturnType<typeof extractFields>, record?:
     const readMoreUrl = url && typeof url === 'string' && url.startsWith('https://') ? url : undefined;
     const image = fields.image;
     const tags = fields.tags;
+    const description = fields.description;
     
     // Get author DID from record for blob URLs
     const authorDid = record?.value?.author || record?.uri?.split('/')[2] || '';
@@ -373,8 +383,8 @@ export function renderLeaflet(fields: ReturnType<typeof extractFields>, record?:
     // Metadata badge
     const badge = document.createElement('div');
     badge.className = 'leaflet-badge';
-    badge.textContent = 'leaflet.pub';
-    badge.setAttribute('aria-label', 'Published on leaflet.pub');
+    badge.textContent = 'standard.site';
+    badge.setAttribute('aria-label', 'Published as standard.site');
     container.appendChild(badge);
 
     // Article header with title
@@ -517,10 +527,18 @@ export function renderLeaflet(fields: ReturnType<typeof extractFields>, record?:
         contentEl.appendChild(blocksFragment);
         container.appendChild(contentEl);
       }
+    } else if (description && typeof description === 'string' && description.trim()) {
+      // No blocks: show description as teaser (e.g. standard.site docs with canonicalUrl)
+      const contentEl = document.createElement('div');
+      contentEl.className = 'leaflet-content leaflet-description';
+      const p = document.createElement('p');
+      p.textContent = description.trim();
+      contentEl.appendChild(p);
+      container.appendChild(contentEl);
     }
 
-    // Link to original on leaflet.pub: use field url when valid https, else for
-    // site.standard.document fetch the owner's publication record and use its url + doc rkey
+    // Link to full article: use fields.url (canonicalUrl or derived) when valid https, else for
+    // site.standard.document fetch the owner's publication record and use its url + doc path
     if (readMoreUrl) {
       appendReadMoreLink(container, readMoreUrl);
     } else if (record?.uri && record.uri.includes(SITE_STANDARD_DOCUMENT)) {

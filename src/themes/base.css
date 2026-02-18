@@ -3142,7 +3142,7 @@ body.has-pattern .flower-grid-item {
   white-space: pre-wrap;
 }
 
-/* Leaflet.pub Long-Form Publishing Layout */
+/* Standard.site Long-Form Publishing Layout */
 .layout-leaflet {
   display: flex;
   flex-direction: column;
