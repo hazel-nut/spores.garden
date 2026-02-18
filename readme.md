@@ -84,7 +84,7 @@ Static Site → Slingshot (records) + Constellation (backlinks) → Your PDS
 | `list` | Generic list |
 | `profile` | About section |
 | `raw` | Custom HTML |
-| `leaflet` | Long-form articles from leaflet.pub |
+| `leaflet` | Long-form articles from standard.site |
 | `smoke-signal` | Events (hosting/attending) |
 | `flower-bed` | Flower garden display |
 | `collected-flowers` | Collected flowers display |

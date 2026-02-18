@@ -225,6 +225,26 @@ describe('Field Extractor', () => {
       expect(fields.content).toBeTruthy();
     });
 
+    it('should prefer canonicalUrl for site.standard.document', () => {
+      const record = {
+        uri: 'at://did:plc:test/site.standard.document/rkey123',
+        value: {
+          $type: 'site.standard.document',
+          title: 'Who took this photo?',
+          description: 'An explainer for publishers...',
+          publishedAt: '2026-02-03T00:00:00.000Z',
+          canonicalUrl: 'https://hypha.coop/dripline/who-took-this-photo',
+          coverImage: { $type: 'blob', ref: { $link: 'bafkreia323fjc7yduwohkrjh2ny53doh5w33b7nzuc67rs6c2sp7vacvlq' } },
+          textContent: 'Partial content...'
+        }
+      };
+
+      const fields = extractFields(record);
+
+      expect(fields.title).toBe('Who took this photo?');
+      expect(fields.url).toBe('https://hypha.coop/dripline/who-took-this-photo');
+    });
+
     it('should extract fields from spores.garden text content', () => {
       const record = {
         value: {

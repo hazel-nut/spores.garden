@@ -82,7 +82,7 @@ export class SiteEditor {
           </button>
           <button data-type="leaflet" class="section-type">
             <span class="icon">📄</span>
-            <span>leaflet.pub Article</span>
+            <span>Standard.site Article</span>
           </button>
           <button data-type="collected-flowers" class="section-type">
             <span class="icon">🌼</span>
@@ -771,7 +771,7 @@ export class SiteEditor {
       <div class="modal-content">
         <div class="welcome-loading">
           <div class="spinner"></div>
-          <p>Loading leaflet publications...</p>
+          <p>Loading standard.site publications...</p>
         </div>
       </div>
     `;
@@ -803,7 +803,7 @@ export class SiteEditor {
         modal.innerHTML = `
           <div class="modal-content">
             <h2>No Publications Found</h2>
-            <p>You don't have any leaflet publications yet.</p>
+            <p>You don't have any standard.site publications yet.</p>
             <p style="font-size: 0.9em; color: var(--text-muted);">
               Collections checked: <code>site.standard.document</code>, <code>pub.leaflet.document</code>
             </p>
@@ -831,8 +831,8 @@ export class SiteEditor {
   showLeafletRecordSelector(modal: HTMLElement, records: any[]) {
     modal.innerHTML = `
       <div class="modal-content">
-        <h2>Select Leaflet Publications</h2>
-        <p>Choose which leaflet.pub articles to display on your garden</p>
+        <h2>Select Standard.site Publications</h2>
+        <p>Choose which standard.site articles to display on your garden</p>
         <div class="record-list" style="max-height: 400px; overflow-y: auto; margin: 1rem 0;">
           ${records.map((record, idx) => {
       const rkey = record.uri?.split('/').pop() || idx.toString();

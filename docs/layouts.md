@@ -391,7 +391,7 @@ The following layouts are available by default:
 - `flower-bed` - Displays planted flowers
 - `collected-flowers` - Displays collected flowers
 - `smoke-signal` - Displays Smoke Signal events
-- `leaflet` - Displays Leaflet.pub articles
+- `leaflet` - Displays Standard.site articles
 
 ## Testing Your Layout
 

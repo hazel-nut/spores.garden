@@ -475,7 +475,7 @@ registerLayout('collected-flowers', renderCollectedFlowers);
 registerLayout('smoke-signal', renderSmokeSignal);
 
 /**
- * Leaflet.pub Layout - displays long-form articles from leaflet.pub (AT Protocol long-form publishing)
+ * Standard.site Layout - displays long-form articles from site.standard.document (Standard.site / AT Protocol)
  */
 registerLayout('leaflet', renderLeaflet);
 
